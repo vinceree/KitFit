@@ -1,7 +1,8 @@
 import type { ScenePreset } from "@/lib/supabase/types";
 import { generateWithGemini } from "./providers/gemini";
+import { generateWithNanoBanana } from "./providers/nanobanana";
 
-export type AIProvider = "gemini" | "fashn_replicate";
+export type AIProvider = "gemini" | "nanobanana" | "fashn_replicate";
 
 /**
  * Main entry point for virtual try-on image generation.
@@ -26,6 +27,14 @@ export async function generateTryOn(
   switch (provider) {
     case "gemini":
       return generateWithGemini(
+        personImageBase64,
+        bikeImageBase64,
+        garmentImageBase64,
+        scenePreset
+      );
+
+    case "nanobanana":
+      return generateWithNanoBanana(
         personImageBase64,
         bikeImageBase64,
         garmentImageBase64,
