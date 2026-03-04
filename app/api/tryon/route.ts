@@ -122,35 +122,20 @@ export async function POST(request: NextRequest) {
       scenePreset as ScenePreset
     );
 
-    // Store result in Supabase Storage
-    const imageBuffer = Buffer.from(resultBase64, "base64");
-    const fileName = `tryon/${brandId}/${Date.now()}.jpg`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("tryon-results")
-      .upload(fileName, imageBuffer, {
-        contentType: "image/jpeg",
-        cacheControl: "86400",
-      });
-
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
-      return json({ error: "Failed to store result image" }, 500);
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("tryon-results").getPublicUrl(fileName);
-
-    // Record try-on (no PII stored)
+    // Record try-on for usage tracking (no images or PII stored)
     await supabase.from("try_ons").insert({
       brand_id: brandId,
       product_id: productId || null,
       scene_preset: scenePreset as ScenePreset,
-      result_image_url: publicUrl,
+      result_image_url: null,
     });
 
-    return json({ result_image_url: publicUrl, scene_preset: scenePreset });
+    // Return image as base64 data URL directly to the client.
+    // Nothing is persisted server-side — the image only lives in the user's browser.
+    return json({
+      result_image: `data:image/jpeg;base64,${resultBase64}`,
+      scene_preset: scenePreset,
+    });
   } catch (error) {
     console.error("Try-on generation error:", error);
     return json({ error: "Internal server error during generation" }, 500);

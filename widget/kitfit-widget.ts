@@ -508,12 +508,12 @@ interface KitFitConfig {
 
         const data = await resp.json();
 
-        // Show result
+        // Show result — image is a base64 data URL, lives only in the browser
         $("#kf-loading").style.display = "none";
         $("#kf-result").style.display = "block";
         (
           this.root.querySelector("#kf-result-img") as HTMLImageElement
-        ).src = data.result_image_url;
+        ).src = data.result_image;
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Something went wrong";
