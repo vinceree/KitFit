@@ -2,7 +2,7 @@ import { createServiceClient } from "@/lib/supabase/client";
 import { buildPrompt } from "../prompts";
 import type { ScenePreset } from "@/lib/supabase/types";
 
-const API_BASE = "https://api.nanobananaapi.ai/api/v1/nanobanana";
+const API_BASE = "https://api.nanobananaapi.ai/api/v1/nanobanana/generate-2";
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_ATTEMPTS = 60; // 3 minutes max
 
