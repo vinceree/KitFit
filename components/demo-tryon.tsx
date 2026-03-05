@@ -113,8 +113,14 @@ export function DemoTryOn({ apiKey, appUrl }: DemoTryOnProps) {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Generation failed");
+        let message = "Generation failed";
+        try {
+          const err = await res.json();
+          message = err.error || message;
+        } catch {
+          // Response body may be empty (e.g. timeout)
+        }
+        throw new Error(message);
       }
 
       const data = await res.json();

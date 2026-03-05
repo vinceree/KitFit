@@ -502,8 +502,14 @@ interface KitFitConfig {
         );
 
         if (!resp.ok) {
-          const err = await resp.json();
-          throw new Error(err.error || "Generation failed");
+          let message = "Generation failed";
+          try {
+            const err = await resp.json();
+            message = err.error || message;
+          } catch {
+            // Response body may be empty (e.g. timeout)
+          }
+          throw new Error(message);
         }
 
         const data = await resp.json();

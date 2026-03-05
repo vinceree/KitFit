@@ -4,6 +4,9 @@ import { generateTryOn } from "@/lib/ai/generate";
 import { getMonthlyLimit } from "@/lib/rate-limit";
 import type { ScenePreset, PlanTier } from "@/lib/supabase/types";
 
+// Allow up to 5 minutes for NanoBanana polling + image fetch
+export const maxDuration = 300;
+
 const VALID_PRESETS = new Set<ScenePreset>([
   "alpine",
   "coastal",
