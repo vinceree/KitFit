@@ -33,6 +33,12 @@ export default async function DashboardLayout({
                 Products
               </Link>
               <Link
+                href="/dashboard/demo"
+                className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100"
+              >
+                Demo
+              </Link>
+              <Link
                 href="/dashboard/embed"
                 className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100"
               >
