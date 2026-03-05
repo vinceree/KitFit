@@ -14,7 +14,7 @@ export interface ScenePresetConfig {
 }
 
 const SHARED_NEGATIVE_PROMPT =
-  "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, low quality, blurry, distorted";
+  "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, sandals, bare feet, non-cycling footwear";
 
 export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
   alpine: {
@@ -61,7 +61,18 @@ CRITICAL REQUIREMENTS:
 - The person should be in a natural cycling riding position on their bike
 - The scene should be: {scenePositive}
 - Photorealistic quality, professional cycling photography style, natural lighting
-- The jersey must fit naturally on the person's body with proper fabric draping and shadows`;
+- The jersey must fit naturally on the person's body with proper fabric draping and shadows
+
+HELMET RULES (MANDATORY):
+- The person MUST always wear a cycling helmet in the generated image
+- If the person is wearing a helmet in the reference photo, preserve that exact helmet (color, shape, brand)
+- If the person is NOT wearing a helmet in the reference photo, add a plain white cycling helmet
+
+FOOTWEAR RULES (MANDATORY):
+- The person MUST always wear cycling shoes (clip-in road cycling shoes) in the generated image
+- If the person is wearing cycling shoes in the reference photo, preserve those exact shoes (color, style, brand)
+- If the person is NOT wearing cycling shoes in the reference photo, add plain white road cycling shoes
+- NEVER generate any other type of footwear (no sneakers, no running shoes, no casual shoes, no sandals)`;
 
 /**
  * Builds the full generation prompt for a given scene preset.
