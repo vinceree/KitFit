@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyclePro Shop — Test Page</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    header {
+      background: #0f172a;
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 20px; font-weight: 700; }
+    header nav { margin-left: auto; display: flex; gap: 24px; font-size: 14px; }
+    header nav a { color: #94a3b8; text-decoration: none; }
+    main { max-width: 1000px; margin: 40px auto; padding: 0 24px; }
+    .product-page { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .product-image {
+      background: #e2e8f0;
+      border-radius: 12px;
+      aspect-ratio: 3/4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #64748b;
+    }
+    .product-image img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+    .product-info h2 { font-size: 28px; margin-bottom: 8px; }
+    .product-info .price { font-size: 22px; color: #0ea5e9; font-weight: 700; margin-bottom: 16px; }
+    .product-info .desc { color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+    .product-info .sizes { margin-bottom: 24px; }
+    .product-info .sizes span {
+      display: inline-block;
+      padding: 8px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      margin-right: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .product-info .sizes span:hover { border-color: #0f172a; }
+    .buy-btn {
+      display: inline-block;
+      padding: 14px 32px;
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .widget-section { margin-top: 12px; }
+    .setup-note {
+      margin-top: 40px;
+      padding: 20px;
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #92400e;
+    }
+    .setup-note code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    @media (max-width: 768px) {
+      .product-page { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fake bike shop header -->
+  <header>
+    <h1>CyclePro Shop</h1>
+    <nav>
+      <a href="#">Jerseys</a>
+      <a href="#">Bikes</a>
+      <a href="#">Accessories</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="product-page">
+      <!-- Left: product image -->
+      <div class="product-image" id="product-img-box">
+        <!-- Replace with a real jersey image URL if you have one -->
+        <span>Jersey image placeholder<br>(replace garmentImageUrl below)</span>
+      </div>
+
+      <!-- Right: product info + widget -->
+      <div class="product-info">
+        <h2>Aero Pro Jersey — Team Edition</h2>
+        <div class="price">€129.00</div>
+        <p class="desc">
+          Lightweight aero-fit cycling jersey with UV50+ protection,
+          three rear pockets, and full-length hidden zipper.
+          Designed for performance road cycling.
+        </p>
+
+        <div class="sizes">
+          <span>XS</span><span>S</span><span>M</span><span>L</span><span>XL</span>
+        </div>
+
+        <button class="buy-btn">Add to Cart</button>
+
+        <!-- KitFit widget goes here -->
+        <div class="widget-section">
+          <div
+            data-kitfit
+            data-kitfit-key="YOUR_API_KEY_HERE"
+            data-kitfit-api=""
+            data-kitfit-garment=""
+            data-kitfit-product="test-product-001"
+            data-kitfit-button="Try it on your bike →"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setup-note">
+      <strong>Setup:</strong> Edit the <code>data-kitfit-*</code> attributes on the widget div above:<br><br>
+      1. <code>data-kitfit-key</code> — your KitFit API key (from the dashboard)<br>
+      2. <code>data-kitfit-garment</code> — a public URL to the jersey/garment image<br>
+      3. <code>data-kitfit-api</code> — auto-set to your local dev server
+    </div>
+  </main>
+
+  <!-- Load the KitFit widget -->
+  <script>
+    // Set data-kitfit-api to current origin so it hits your local dev server
+    document.querySelector("[data-kitfit]").dataset.kitfitApi = window.location.origin;
+  </script>
+  <script src="/widget/kitfit.js"></script>
+
+</body>
+</html>
