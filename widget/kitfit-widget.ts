@@ -271,6 +271,10 @@ interface KitFitConfig {
 
     constructor(el: HTMLElement, config: KitFitConfig) {
       this.config = { ...DEFAULTS, ...config };
+      // Strip trailing slash to avoid double-slash in API URLs
+      if (this.config.apiUrl.endsWith("/")) {
+        this.config.apiUrl = this.config.apiUrl.slice(0, -1);
+      }
       this.root = el.attachShadow({ mode: "open" });
       this.render();
     }
