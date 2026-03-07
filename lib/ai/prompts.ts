@@ -19,7 +19,8 @@ const SHARED_NEGATIVE_PROMPT =
   "high contrast, glossy, plastic-look, studio lighting, flash photography, harsh shadows, " +
   "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, " +
   "low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, " +
-  "sandals, bare feet, non-cycling footwear";
+  "sandals, bare feet, non-cycling footwear, " +
+  "smiling, grinning, looking at camera, posing, eye contact with viewer";
 
 export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
   alpine: {
@@ -80,6 +81,11 @@ ABSOLUTE RULE — NO OTHER PEOPLE:
 - The ONLY person in the image must be the person from the reference photo
 - Do NOT generate any other people, bystanders, pedestrians, other cyclists, or any human figures besides the uploaded person
 - The scene must show the person completely alone
+
+EXPRESSION & GAZE (MANDATORY):
+- The person must NOT smile or grin — expression should be calm, focused, and natural
+- The person must NOT look directly into the camera — gaze should be forward on the road or naturally averted
+- Think "in the zone" cycling focus, not posing for a photo
 
 BRAND AESTHETIC (straede — Nordic minimalist cycling):
 - Style: minimalist, Nordic, cinematic storytelling, editorial photography
