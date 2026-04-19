@@ -4,7 +4,7 @@ import type { ScenePreset } from "@/lib/supabase/types";
 
 const API_BASE = "https://api.nanobananaapi.ai/api/v1/nanobanana/generate-2";
 const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_ATTEMPTS = 60; // 3 minutes max
+const MAX_POLL_ATTEMPTS = 200; // 10 minutes max — tolerates high-volume queueing
 
 /**
  * NanoBanana-based virtual try-on generation.
@@ -175,7 +175,7 @@ async function pollForResult(
     }
   }
 
-  throw new Error("NanoBanana generation timed out after 3 minutes");
+  throw new Error("NanoBanana generation timed out after 10 minutes");
 }
 
 function sleep(ms: number): Promise<void> {

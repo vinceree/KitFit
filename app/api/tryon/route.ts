@@ -4,8 +4,9 @@ import { generateTryOn } from "@/lib/ai/generate";
 import { getMonthlyLimit } from "@/lib/rate-limit";
 import type { ScenePreset, PlanTier } from "@/lib/supabase/types";
 
-// Allow up to 5 minutes for NanoBanana polling + image fetch
-export const maxDuration = 300;
+// Allow up to ~13 minutes for NanoBanana polling + image fetch during high-volume queues.
+// (Vercel Pro hard cap is 800s; Enterprise can go higher.)
+export const maxDuration = 800;
 
 const VALID_PRESETS = new Set<ScenePreset>([
   "alpine",
