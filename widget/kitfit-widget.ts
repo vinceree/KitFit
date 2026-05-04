@@ -249,6 +249,40 @@ interface KitFitConfig {
     .kf-powered a { color: #64748b; text-decoration: none; }
     .kf-powered a:hover { text-decoration: underline; }
 
+    .kf-saved-photos { margin-bottom: 12px; }
+    .kf-saved-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .kf-saved-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .kf-saved-thumb {
+      flex-shrink: 0;
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid #e2e8f0;
+      transition: border-color 0.2s;
+    }
+    .kf-saved-thumb:hover { border-color: #94a3b8; }
+    .kf-saved-thumb.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .kf-saved-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
     @media (max-width: 480px) {
       .kf-modal { padding: 20px; margin: 8px; }
       .kf-scene-grid { grid-template-columns: 1fr; }
@@ -262,6 +296,84 @@ interface KitFitConfig {
     { id: "urban", name: "Urban", desc: "City streets, dawn" },
   ];
 
+  // ── Session photo cache ──────────────────────────────────────────
+  const SESSION_PERSON = "kf-person-photos";
+  const SESSION_BIKE = "kf-bike-photos";
+  const MAX_SAVED = 3;
+
+  interface SavedPhoto {
+    name: string;
+    dataUrl: string;
+    ts: number;
+  }
+
+  function loadSaved(key: string): SavedPhoto[] {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function saveTo(key: string, photo: SavedPhoto) {
+    const photos = loadSaved(key).filter((p) => p.name !== photo.name);
+    photos.unshift(photo);
+    if (photos.length > MAX_SAVED) photos.pop();
+    try {
+      sessionStorage.setItem(key, JSON.stringify(photos));
+    } catch {
+      photos.pop();
+      try {
+        sessionStorage.setItem(key, JSON.stringify(photos));
+      } catch {
+        /* storage full — silently skip */
+      }
+    }
+  }
+
+  function compressImage(
+    file: File,
+    maxDim = 1600,
+    quality = 0.85
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = (height / width) * maxDim;
+            width = maxDim;
+          } else {
+            width = (width / height) * maxDim;
+            height = maxDim;
+          }
+        }
+        const c = document.createElement("canvas");
+        c.width = width;
+        c.height = height;
+        c.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error("Failed to load image for compression"));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function dataUrlToFile(dataUrl: string, name: string): File {
+    const [header, b64] = dataUrl.split(",");
+    const mime = header.match(/:(.*?);/)?.[1] || "image/jpeg";
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new File([arr], name, { type: mime });
+  }
+
+  // ── Widget class ───────────────────────────────────────────────
   class KitFitWidget {
     private config: KitFitConfig & typeof DEFAULTS;
     private root: ShadowRoot;
@@ -306,6 +418,7 @@ interface KitFitConfig {
       });
 
       this.bindEvents();
+      this.renderSavedPhotos();
     }
 
     private modalHTML(): string {
@@ -321,12 +434,14 @@ interface KitFitConfig {
               <div class="kf-upload-label"><strong>Upload your photo</strong></div>
               <div class="kf-upload-hint">Full body, well-lit preferred</div>
             </div>
+            <div class="kf-saved-photos" id="kf-person-saved" style="display:none"></div>
 
             <div class="kf-upload-area" id="kf-bike-upload">
               <input type="file" accept="image/*" id="kf-bike-input">
               <div class="kf-upload-label"><strong>Upload your bike</strong> (optional)</div>
               <div class="kf-upload-hint">Side view works best</div>
             </div>
+            <div class="kf-saved-photos" id="kf-bike-saved" style="display:none"></div>
 
             <div class="kf-scene-label">Choose your scene</div>
             <div class="kf-scene-grid">
@@ -432,7 +547,7 @@ interface KitFitConfig {
       $("#kf-retry").addEventListener("click", () => this.reset());
     }
 
-    private setPersonFile(file: File) {
+    private setPersonFile(file: File, fromCache = false) {
       this.personFile = file;
       const area = this.root.querySelector(
         "#kf-person-upload"
@@ -440,15 +555,58 @@ interface KitFitConfig {
       area.classList.add("has-file");
       area.querySelector(".kf-upload-label")!.innerHTML =
         `<strong>${file.name}</strong>`;
+
+      let preview = area.querySelector(
+        ".kf-upload-preview"
+      ) as HTMLImageElement;
+      if (!preview) {
+        preview = document.createElement("img");
+        preview.className = "kf-upload-preview";
+        area.appendChild(preview);
+      }
+      preview.src = URL.createObjectURL(file);
+
+      if (!fromCache) {
+        compressImage(file).then((dataUrl) => {
+          saveTo(SESSION_PERSON, {
+            name: file.name,
+            dataUrl,
+            ts: Date.now(),
+          });
+          this.renderSavedPhotos();
+        });
+      }
+
       this.updateGenerateButton();
     }
 
-    private setBikeFile(file: File) {
+    private setBikeFile(file: File, fromCache = false) {
       this.bikeFile = file;
       const area = this.root.querySelector("#kf-bike-upload") as HTMLElement;
       area.classList.add("has-file");
       area.querySelector(".kf-upload-label")!.innerHTML =
         `<strong>${file.name}</strong>`;
+
+      let preview = area.querySelector(
+        ".kf-upload-preview"
+      ) as HTMLImageElement;
+      if (!preview) {
+        preview = document.createElement("img");
+        preview.className = "kf-upload-preview";
+        area.appendChild(preview);
+      }
+      preview.src = URL.createObjectURL(file);
+
+      if (!fromCache) {
+        compressImage(file).then((dataUrl) => {
+          saveTo(SESSION_BIKE, {
+            name: file.name,
+            dataUrl,
+            ts: Date.now(),
+          });
+          this.renderSavedPhotos();
+        });
+      }
     }
 
     private updateGenerateButton() {
@@ -558,6 +716,8 @@ interface KitFitConfig {
       personArea.classList.remove("has-file");
       personArea.querySelector(".kf-upload-label")!.innerHTML =
         '<strong>Upload your photo</strong>';
+      const personPreview = personArea.querySelector(".kf-upload-preview");
+      if (personPreview) personPreview.remove();
 
       const bikeArea = this.root.querySelector(
         "#kf-bike-upload"
@@ -565,8 +725,74 @@ interface KitFitConfig {
       bikeArea.classList.remove("has-file");
       bikeArea.querySelector(".kf-upload-label")!.innerHTML =
         '<strong>Upload your bike</strong> (optional)';
+      const bikePreview = bikeArea.querySelector(".kf-upload-preview");
+      if (bikePreview) bikePreview.remove();
+
+      this.root
+        .querySelectorAll(".kf-saved-thumb")
+        .forEach((t) => t.classList.remove("selected"));
 
       this.updateGenerateButton();
+      this.renderSavedPhotos();
+    }
+
+    private renderSavedPhotos() {
+      this.renderSavedSection("kf-person-saved", SESSION_PERSON, "person");
+      this.renderSavedSection("kf-bike-saved", SESSION_BIKE, "bike");
+    }
+
+    private renderSavedSection(
+      containerId: string,
+      sessionKey: string,
+      type: "person" | "bike"
+    ) {
+      const container = this.root.querySelector(
+        `#${containerId}`
+      ) as HTMLElement;
+      if (!container) return;
+
+      const photos = loadSaved(sessionKey);
+      if (photos.length === 0) {
+        container.style.display = "none";
+        return;
+      }
+
+      container.style.display = "block";
+      container.innerHTML = `
+        <div class="kf-saved-label">Recent photos</div>
+        <div class="kf-saved-grid">
+          ${photos
+            .map(
+              (_, i) => `
+            <div class="kf-saved-thumb" data-saved-type="${type}" data-saved-idx="${i}">
+              <img src="${photos[i].dataUrl}" alt="${photos[i].name}">
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `;
+
+      container.querySelectorAll(".kf-saved-thumb").forEach((thumb) => {
+        thumb.addEventListener("click", () => {
+          const idx = parseInt(
+            (thumb as HTMLElement).dataset.savedIdx!,
+            10
+          );
+          const photo = photos[idx];
+          if (!photo) return;
+          const file = dataUrlToFile(photo.dataUrl, photo.name);
+          if (type === "person") {
+            this.setPersonFile(file, true);
+          } else {
+            this.setBikeFile(file, true);
+          }
+          container
+            .querySelectorAll(".kf-saved-thumb")
+            .forEach((t) => t.classList.remove("selected"));
+          thumb.classList.add("selected");
+        });
+      });
     }
 
     private open() {
