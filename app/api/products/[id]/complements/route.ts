@@ -15,16 +15,50 @@ function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: corsHeaders });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveProductId(
+  supabase: ReturnType<typeof import("@/lib/supabase/client").createServiceClient>,
+  idOrSlug: string
+): Promise<string | null> {
+  if (UUID_RE.test(idOrSlug)) {
+    return idOrSlug;
+  }
+
+  const { data } = await supabase
+    .from("products")
+    .select("id")
+    .ilike("product_url", `%/products/${idOrSlug}%`)
+    .limit(1)
+    .single();
+
+  if (data) return data.id;
+
+  const { data: byName } = await supabase
+    .from("products")
+    .select("id")
+    .ilike("name", `%${idOrSlug.replace(/-/g, " ")}%`)
+    .limit(1)
+    .single();
+
+  return byName?.id || null;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const productId = params.id;
-  if (!productId) {
+  const rawId = params.id;
+  if (!rawId) {
     return json({ error: "Product ID is required" }, 400);
   }
 
   const supabase = createServiceClient();
+
+  const productId = await resolveProductId(supabase, rawId);
+  if (!productId) {
+    return json({ complements: [] });
+  }
 
   const { data: pairings, error } = await supabase
     .from("product_pairings")
