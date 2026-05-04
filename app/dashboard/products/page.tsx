@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductList } from "@/components/product-list";
 import { AddProductForm } from "@/components/add-product-form";
 import { ImportProductsForm } from "@/components/import-products-form";
+import { SeedTestProducts } from "@/components/seed-test-products";
 
 export default async function ProductsPage() {
   const user = await getSession();
@@ -33,10 +34,14 @@ export default async function ProductsPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Import from Store</CardTitle>
+          <CardTitle>Import Products</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ImportProductsForm />
+        <CardContent className="space-y-4">
+          <SeedTestProducts />
+          <div className="border-t pt-4">
+            <p className="text-xs text-slate-500 mb-2">Or import from any store URL:</p>
+            <ImportProductsForm />
+          </div>
         </CardContent>
       </Card>
 
