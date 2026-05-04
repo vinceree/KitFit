@@ -1,4 +1,4 @@
-"use strict";(()=>{var S=Object.defineProperty;var E=(l,c,p)=>c in l?S(l,c,{enumerable:!0,configurable:!0,writable:!0,value:p}):l[c]=p;var f=(l,c,p)=>E(l,typeof c!="symbol"?c+"":c,p);(function(){let l={apiUrl:"https://kitfit.app",buttonText:"Try it on your bike \u2192"},c=`
+"use strict";(()=>{var S=Object.defineProperty;var E=(d,c,f)=>c in d?S(d,c,{enumerable:!0,configurable:!0,writable:!0,value:f}):d[c]=f;var p=(d,c,f)=>E(d,typeof c!="symbol"?c+"":c,f);(function(){let d={apiUrl:"https://kitfit.app",buttonText:"Try it on your bike \u2192"},c=`
     :host {
       all: initial;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -229,6 +229,54 @@
     .kf-powered a { color: #64748b; text-decoration: none; }
     .kf-powered a:hover { text-decoration: underline; }
 
+    .kf-complements { margin-bottom: 20px; }
+    .kf-complements-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .kf-complements-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .kf-complement-card {
+      flex-shrink: 0;
+      width: 80px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+    }
+    .kf-complement-card:hover { border-color: #94a3b8; }
+    .kf-complement-card.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .kf-complement-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+    }
+    .kf-complement-card .kf-complement-name {
+      font-size: 10px;
+      font-weight: 500;
+      color: #475569;
+      padding: 4px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .kf-complement-card .kf-complement-default {
+      font-size: 9px;
+      color: #3b82f6;
+      text-align: center;
+      padding-bottom: 4px;
+    }
+
     .kf-saved-photos { margin-bottom: 12px; }
     .kf-saved-label {
       font-size: 11px;
@@ -267,13 +315,13 @@
       .kf-modal { padding: 20px; margin: 8px; }
       .kf-scene-grid { grid-template-columns: 1fr; }
     }
-  `,p=[{id:"alpine",name:"Alpine",desc:"Mountain road, sunny"},{id:"coastal",name:"Coastal",desc:"Ocean road, bright"},{id:"forest",name:"Forest",desc:"Tree-lined, dappled light"},{id:"urban",name:"Urban",desc:"City streets, dawn"}],g="kf-person-photos",u="kf-bike-photos",x=3;function k(d){try{return JSON.parse(sessionStorage.getItem(d)||"[]")}catch{return[]}}function h(d,e){let o=k(d).filter(t=>t.name!==e.name);o.unshift(e),o.length>x&&o.pop();try{sessionStorage.setItem(d,JSON.stringify(o))}catch{o.pop();try{sessionStorage.setItem(d,JSON.stringify(o))}catch{}}}function b(d,e=1600,o=.85){return new Promise((t,r)=>{let n=new Image;n.onload=()=>{let{width:a,height:i}=n;(a>e||i>e)&&(a>i?(i=i/a*e,a=e):(a=a/i*e,i=e));let s=document.createElement("canvas");s.width=a,s.height=i,s.getContext("2d").drawImage(n,0,0,a,i),URL.revokeObjectURL(n.src),t(s.toDataURL("image/jpeg",o))},n.onerror=()=>{URL.revokeObjectURL(n.src),r(new Error("Failed to load image for compression"))},n.src=URL.createObjectURL(d)})}function w(d,e){let[o,t]=d.split(","),r=o.match(/:(.*?);/)?.[1]||"image/jpeg",n=atob(t),a=new Uint8Array(n.length);for(let i=0;i<n.length;i++)a[i]=n.charCodeAt(i);return new File([a],e,{type:r})}class v{constructor(e,o){f(this,"config");f(this,"root");f(this,"personFile",null);f(this,"bikeFile",null);f(this,"selectedScene","alpine");this.config={...l,...o},this.config.apiUrl.endsWith("/")&&(this.config.apiUrl=this.config.apiUrl.slice(0,-1)),this.root=e.attachShadow({mode:"open"}),this.render()}render(){let e=document.createElement("style");e.textContent=c,this.root.appendChild(e);let o=document.createElement("button");o.className="kf-trigger",o.innerHTML=`
+  `,f=[{id:"alpine",name:"Alpine",desc:"Mountain road, sunny"},{id:"coastal",name:"Coastal",desc:"Ocean road, bright"},{id:"forest",name:"Forest",desc:"Tree-lined, dappled light"},{id:"urban",name:"Urban",desc:"City streets, dawn"}],m="kf-person-photos",g="kf-bike-photos",x=3;function u(l){try{return JSON.parse(sessionStorage.getItem(l)||"[]")}catch{return[]}}function k(l,e){let o=u(l).filter(t=>t.name!==e.name);o.unshift(e),o.length>x&&o.pop();try{sessionStorage.setItem(l,JSON.stringify(o))}catch{o.pop();try{sessionStorage.setItem(l,JSON.stringify(o))}catch{}}}function h(l,e=1600,o=.85){return new Promise((t,i)=>{let n=new Image;n.onload=()=>{let{width:s,height:r}=n;(s>e||r>e)&&(s>r?(r=r/s*e,s=e):(s=s/r*e,r=e));let a=document.createElement("canvas");a.width=s,a.height=r,a.getContext("2d").drawImage(n,0,0,s,r),URL.revokeObjectURL(n.src),t(a.toDataURL("image/jpeg",o))},n.onerror=()=>{URL.revokeObjectURL(n.src),i(new Error("Failed to load image for compression"))},n.src=URL.createObjectURL(l)})}function w(l,e){let[o,t]=l.split(","),i=o.match(/:(.*?);/)?.[1]||"image/jpeg",n=atob(t),s=new Uint8Array(n.length);for(let r=0;r<n.length;r++)s[r]=n.charCodeAt(r);return new File([s],e,{type:i})}class b{constructor(e,o){p(this,"config");p(this,"root");p(this,"personFile",null);p(this,"bikeFile",null);p(this,"selectedScene","alpine");p(this,"complements",[]);p(this,"selectedComplement",null);this.config={...d,...o},this.config.apiUrl.endsWith("/")&&(this.config.apiUrl=this.config.apiUrl.slice(0,-1)),this.root=e.attachShadow({mode:"open"}),this.render()}render(){let e=document.createElement("style");e.textContent=c,this.root.appendChild(e);let o=document.createElement("button");o.className="kf-trigger",o.innerHTML=`
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/>
           <path d="M8 12l2 2 4-4"/>
         </svg>
         ${this.config.buttonText}
-      `,this.root.appendChild(o);let t=document.createElement("div");t.className="kf-overlay",t.innerHTML=this.modalHTML(),this.root.appendChild(t),o.addEventListener("click",()=>this.open()),t.addEventListener("click",r=>{r.target===t&&this.close()}),this.bindEvents(),this.renderSavedPhotos()}modalHTML(){return`
+      `,this.root.appendChild(o);let t=document.createElement("div");t.className="kf-overlay",t.innerHTML=this.modalHTML(),this.root.appendChild(t),o.addEventListener("click",()=>this.open()),t.addEventListener("click",i=>{i.target===t&&this.close()}),this.bindEvents(),this.renderSavedPhotos()}modalHTML(){return`
         <div class="kf-modal">
           <button class="kf-close">&times;</button>
           <div class="kf-title">Virtual Try-On</div>
@@ -296,12 +344,17 @@
 
             <div class="kf-scene-label">Choose your scene</div>
             <div class="kf-scene-grid">
-              ${p.map(e=>`
+              ${f.map(e=>`
                 <button class="kf-scene-btn${e.id==="alpine"?" selected":""}" data-scene="${e.id}">
                   <div class="kf-scene-name">${e.name}</div>
                   <div class="kf-scene-desc">${e.desc}</div>
                 </button>
               `).join("")}
+            </div>
+
+            <div id="kf-complements" class="kf-complements" style="display:none">
+              <div class="kf-complements-label">Complete the look</div>
+              <div class="kf-complements-grid" id="kf-complements-grid"></div>
             </div>
 
             <div id="kf-error" class="kf-error" style="display:none"></div>
@@ -325,14 +378,20 @@
 
           <div class="kf-powered">Powered by <a href="https://kitfit.app" target="_blank">KitFit</a></div>
         </div>
-      `}bindEvents(){let e=i=>this.root.querySelector(i),o=i=>this.root.querySelector(i);e(".kf-close").addEventListener("click",()=>this.close());let t=e("#kf-person-upload"),r=o("#kf-person-input");t.addEventListener("click",()=>r.click()),t.addEventListener("dragover",i=>{i.preventDefault(),t.classList.add("dragover")}),t.addEventListener("dragleave",()=>t.classList.remove("dragover")),t.addEventListener("drop",i=>{i.preventDefault(),t.classList.remove("dragover");let s=i.dataTransfer?.files[0];s&&this.setPersonFile(s)}),r.addEventListener("change",()=>{r.files?.[0]&&this.setPersonFile(r.files[0])});let n=e("#kf-bike-upload"),a=o("#kf-bike-input");n.addEventListener("click",()=>a.click()),n.addEventListener("dragover",i=>{i.preventDefault(),n.classList.add("dragover")}),n.addEventListener("dragleave",()=>n.classList.remove("dragover")),n.addEventListener("drop",i=>{i.preventDefault(),n.classList.remove("dragover");let s=i.dataTransfer?.files[0];s&&this.setBikeFile(s)}),a.addEventListener("change",()=>{a.files?.[0]&&this.setBikeFile(a.files[0])}),this.root.querySelectorAll(".kf-scene-btn").forEach(i=>{i.addEventListener("click",()=>{this.root.querySelectorAll(".kf-scene-btn").forEach(s=>s.classList.remove("selected")),i.classList.add("selected"),this.selectedScene=i.dataset.scene})}),e("#kf-generate").addEventListener("click",()=>this.generate()),e("#kf-download").addEventListener("click",()=>this.download()),e("#kf-retry").addEventListener("click",()=>this.reset())}setPersonFile(e,o=!1){this.personFile=e;let t=this.root.querySelector("#kf-person-upload");t.classList.add("has-file"),t.querySelector(".kf-upload-label").innerHTML=`<strong>${e.name}</strong>`;let r=t.querySelector(".kf-upload-preview");r||(r=document.createElement("img"),r.className="kf-upload-preview",t.appendChild(r)),r.src=URL.createObjectURL(e),o||b(e).then(n=>{h(g,{name:e.name,dataUrl:n,ts:Date.now()}),this.renderSavedPhotos()}),this.updateGenerateButton()}setBikeFile(e,o=!1){this.bikeFile=e;let t=this.root.querySelector("#kf-bike-upload");t.classList.add("has-file"),t.querySelector(".kf-upload-label").innerHTML=`<strong>${e.name}</strong>`;let r=t.querySelector(".kf-upload-preview");r||(r=document.createElement("img"),r.className="kf-upload-preview",t.appendChild(r)),r.src=URL.createObjectURL(e),o||b(e).then(n=>{h(u,{name:e.name,dataUrl:n,ts:Date.now()}),this.renderSavedPhotos()})}updateGenerateButton(){let e=this.root.querySelector("#kf-generate");e.disabled=!this.personFile}async fetchGarmentImage(){let e=this.config.garmentImageUrl;if(!e)return null;try{let t=await(await fetch(e)).blob();return new File([t],"garment.jpg",{type:t.type})}catch{return null}}async generate(){let e=o=>this.root.querySelector(o);if(this.personFile){e("#kf-form").style.display="none",e("#kf-loading").style.display="block",e("#kf-error").style.display="none";try{let o=await this.fetchGarmentImage();if(!o)throw new Error("Could not load the product image. Please try again.");let t=new FormData;t.append("api_key",this.config.apiKey),t.append("scene_preset",this.selectedScene),t.append("person_image",this.personFile),t.append("garment_image",o),this.config.productId&&t.append("product_id",this.config.productId),this.bikeFile&&t.append("bike_image",this.bikeFile);let r=await fetch(`${this.config.apiUrl}/api/tryon`,{method:"POST",body:t});if(!r.ok){let a="Generation failed";try{a=(await r.json()).error||a}catch{}throw new Error(a)}let n=await r.json();e("#kf-loading").style.display="none",e("#kf-result").style.display="block",this.root.querySelector("#kf-result-img").src=n.result_image}catch(o){let t=o instanceof Error?o.message:"Something went wrong";e("#kf-loading").style.display="none",e("#kf-form").style.display="block";let r=e("#kf-error");r.textContent=t,r.style.display="block"}}}download(){let e=this.root.querySelector("#kf-result-img"),o=document.createElement("a");o.href=e.src,o.download="kitfit-tryon.jpg",o.click()}reset(){let e=a=>this.root.querySelector(a);e("#kf-result").style.display="none",e("#kf-form").style.display="block",this.personFile=null,this.bikeFile=null;let o=this.root.querySelector("#kf-person-upload");o.classList.remove("has-file"),o.querySelector(".kf-upload-label").innerHTML="<strong>Upload your photo</strong>";let t=o.querySelector(".kf-upload-preview");t&&t.remove();let r=this.root.querySelector("#kf-bike-upload");r.classList.remove("has-file"),r.querySelector(".kf-upload-label").innerHTML="<strong>Upload your bike</strong> (optional)";let n=r.querySelector(".kf-upload-preview");n&&n.remove(),this.root.querySelectorAll(".kf-saved-thumb").forEach(a=>a.classList.remove("selected")),this.updateGenerateButton(),this.renderSavedPhotos()}renderSavedPhotos(){this.renderSavedSection("kf-person-saved",g,"person"),this.renderSavedSection("kf-bike-saved",u,"bike")}renderSavedSection(e,o,t){let r=this.root.querySelector(`#${e}`);if(!r)return;let n=k(o);if(n.length===0){r.style.display="none";return}r.style.display="block",r.innerHTML=`
+      `}bindEvents(){let e=r=>this.root.querySelector(r),o=r=>this.root.querySelector(r);e(".kf-close").addEventListener("click",()=>this.close());let t=e("#kf-person-upload"),i=o("#kf-person-input");t.addEventListener("click",()=>i.click()),t.addEventListener("dragover",r=>{r.preventDefault(),t.classList.add("dragover")}),t.addEventListener("dragleave",()=>t.classList.remove("dragover")),t.addEventListener("drop",r=>{r.preventDefault(),t.classList.remove("dragover");let a=r.dataTransfer?.files[0];a&&this.setPersonFile(a)}),i.addEventListener("change",()=>{i.files?.[0]&&this.setPersonFile(i.files[0])});let n=e("#kf-bike-upload"),s=o("#kf-bike-input");n.addEventListener("click",()=>s.click()),n.addEventListener("dragover",r=>{r.preventDefault(),n.classList.add("dragover")}),n.addEventListener("dragleave",()=>n.classList.remove("dragover")),n.addEventListener("drop",r=>{r.preventDefault(),n.classList.remove("dragover");let a=r.dataTransfer?.files[0];a&&this.setBikeFile(a)}),s.addEventListener("change",()=>{s.files?.[0]&&this.setBikeFile(s.files[0])}),this.root.querySelectorAll(".kf-scene-btn").forEach(r=>{r.addEventListener("click",()=>{this.root.querySelectorAll(".kf-scene-btn").forEach(a=>a.classList.remove("selected")),r.classList.add("selected"),this.selectedScene=r.dataset.scene})}),e("#kf-generate").addEventListener("click",()=>this.generate()),e("#kf-download").addEventListener("click",()=>this.download()),e("#kf-retry").addEventListener("click",()=>this.reset())}setPersonFile(e,o=!1){this.personFile=e;let t=this.root.querySelector("#kf-person-upload");t.classList.add("has-file"),t.querySelector(".kf-upload-label").innerHTML=`<strong>${e.name}</strong>`;let i=t.querySelector(".kf-upload-preview");i||(i=document.createElement("img"),i.className="kf-upload-preview",t.appendChild(i)),i.src=URL.createObjectURL(e),o||h(e).then(n=>{k(m,{name:e.name,dataUrl:n,ts:Date.now()}),this.renderSavedPhotos()}),this.updateGenerateButton()}setBikeFile(e,o=!1){this.bikeFile=e;let t=this.root.querySelector("#kf-bike-upload");t.classList.add("has-file"),t.querySelector(".kf-upload-label").innerHTML=`<strong>${e.name}</strong>`;let i=t.querySelector(".kf-upload-preview");i||(i=document.createElement("img"),i.className="kf-upload-preview",t.appendChild(i)),i.src=URL.createObjectURL(e),o||h(e).then(n=>{k(g,{name:e.name,dataUrl:n,ts:Date.now()}),this.renderSavedPhotos()})}updateGenerateButton(){let e=this.root.querySelector("#kf-generate");e.disabled=!this.personFile}async fetchGarmentImage(){return this.config.garmentImageUrl?this.fetchImageFromUrl(this.config.garmentImageUrl,"garment.jpg"):null}async generate(){let e=o=>this.root.querySelector(o);if(this.personFile){e("#kf-form").style.display="none",e("#kf-loading").style.display="block",e("#kf-error").style.display="none";try{let o=await this.fetchGarmentImage();if(!o)throw new Error("Could not load the product image. Please try again.");let t=null;this.selectedComplement&&(t=await this.fetchImageFromUrl(this.selectedComplement.imageUrl,"complement.jpg"));let i=new FormData;i.append("api_key",this.config.apiKey),i.append("scene_preset",this.selectedScene),i.append("person_image",this.personFile),i.append("garment_image",o),t&&i.append("complement_image",t),this.config.productId&&i.append("product_id",this.config.productId),this.bikeFile&&i.append("bike_image",this.bikeFile);let n=await fetch(`${this.config.apiUrl}/api/tryon`,{method:"POST",body:i});if(!n.ok){let r="Generation failed";try{r=(await n.json()).error||r}catch{}throw new Error(r)}let s=await n.json();e("#kf-loading").style.display="none",e("#kf-result").style.display="block",this.root.querySelector("#kf-result-img").src=s.result_image}catch(o){let t=o instanceof Error?o.message:"Something went wrong";e("#kf-loading").style.display="none",e("#kf-form").style.display="block";let i=e("#kf-error");i.textContent=t,i.style.display="block"}}}download(){let e=this.root.querySelector("#kf-result-img"),o=document.createElement("a");o.href=e.src,o.download="kitfit-tryon.jpg",o.click()}reset(){let e=s=>this.root.querySelector(s);e("#kf-result").style.display="none",e("#kf-form").style.display="block",this.personFile=null,this.bikeFile=null;let o=this.root.querySelector("#kf-person-upload");o.classList.remove("has-file"),o.querySelector(".kf-upload-label").innerHTML="<strong>Upload your photo</strong>";let t=o.querySelector(".kf-upload-preview");t&&t.remove();let i=this.root.querySelector("#kf-bike-upload");i.classList.remove("has-file"),i.querySelector(".kf-upload-label").innerHTML="<strong>Upload your bike</strong> (optional)";let n=i.querySelector(".kf-upload-preview");n&&n.remove(),this.root.querySelectorAll(".kf-saved-thumb").forEach(s=>s.classList.remove("selected")),this.updateGenerateButton(),this.renderSavedPhotos()}renderSavedPhotos(){this.renderSavedSection("kf-person-saved",m,"person"),this.renderSavedSection("kf-bike-saved",g,"bike")}renderSavedSection(e,o,t){let i=this.root.querySelector(`#${e}`);if(!i)return;let n=u(o);if(n.length===0){i.style.display="none";return}i.style.display="block",i.innerHTML=`
         <div class="kf-saved-label">Recent photos</div>
         <div class="kf-saved-grid">
-          ${n.map((a,i)=>`
-            <div class="kf-saved-thumb" data-saved-type="${t}" data-saved-idx="${i}">
-              <img src="${n[i].dataUrl}" alt="${n[i].name}">
+          ${n.map((s,r)=>`
+            <div class="kf-saved-thumb" data-saved-type="${t}" data-saved-idx="${r}">
+              <img src="${n[r].dataUrl}" alt="${n[r].name}">
             </div>
           `).join("")}
         </div>
-      `,r.querySelectorAll(".kf-saved-thumb").forEach(a=>{a.addEventListener("click",()=>{let i=parseInt(a.dataset.savedIdx,10),s=n[i];if(!s)return;let y=w(s.dataUrl,s.name);t==="person"?this.setPersonFile(y,!0):this.setBikeFile(y,!0),r.querySelectorAll(".kf-saved-thumb").forEach(L=>L.classList.remove("selected")),a.classList.add("selected")})})}open(){this.root.querySelector(".kf-overlay").classList.add("open")}close(){this.root.querySelector(".kf-overlay").classList.remove("open")}}function m(){document.querySelectorAll("[data-kitfit]").forEach(d=>{let e=d;if(e.shadowRoot)return;let o={apiKey:e.dataset.kitfitKey||"",apiUrl:e.dataset.kitfitApi||l.apiUrl,productId:e.dataset.kitfitProduct||void 0,garmentImageUrl:e.dataset.kitfitGarment||void 0,buttonText:e.dataset.kitfitButton||l.buttonText};new v(e,o)})}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",m):m(),window.KitFitWidget=v})();})();
+      `,i.querySelectorAll(".kf-saved-thumb").forEach(s=>{s.addEventListener("click",()=>{let r=parseInt(s.dataset.savedIdx,10),a=n[r];if(!a)return;let y=w(a.dataUrl,a.name);t==="person"?this.setPersonFile(y,!0):this.setBikeFile(y,!0),i.querySelectorAll(".kf-saved-thumb").forEach(L=>L.classList.remove("selected")),s.classList.add("selected")})})}async fetchComplements(){if(!(!this.config.productId||!this.config.apiUrl))try{let e=await fetch(`${this.config.apiUrl}/api/products/${this.config.productId}/complements`);if(!e.ok)return;let o=await e.json();this.complements=o.complements||[],this.selectedComplement=this.complements.find(t=>t.isDefault)||null,this.renderComplements()}catch{}}renderComplements(){let e=this.root.querySelector("#kf-complements"),o=this.root.querySelector("#kf-complements-grid");if(!(!e||!o)){if(this.complements.length===0){e.style.display="none";return}e.style.display="block",o.innerHTML=this.complements.map(t=>`
+        <div class="kf-complement-card${this.selectedComplement?.id===t.id?" selected":""}" data-complement-id="${t.id}">
+          <img src="${t.imageUrl}" alt="${t.name}">
+          <div class="kf-complement-name">${t.name}</div>
+          ${t.isDefault?'<div class="kf-complement-default">recommended</div>':""}
+        </div>
+      `).join(""),o.querySelectorAll(".kf-complement-card").forEach(t=>{t.addEventListener("click",()=>{let i=t.dataset.complementId,n=this.complements.find(s=>s.id===i);n&&(this.selectedComplement?.id===n.id?this.selectedComplement=null:this.selectedComplement=n,this.renderComplements())})})}}async fetchImageFromUrl(e,o){try{let i=await(await fetch(e)).blob();return new File([i],o,{type:i.type})}catch{return null}}open(){this.root.querySelector(".kf-overlay").classList.add("open"),this.complements.length===0&&this.fetchComplements()}close(){this.root.querySelector(".kf-overlay").classList.remove("open")}}function v(){document.querySelectorAll("[data-kitfit]").forEach(l=>{let e=l;if(e.shadowRoot)return;let o={apiKey:e.dataset.kitfitKey||"",apiUrl:e.dataset.kitfitApi||d.apiUrl,productId:e.dataset.kitfitProduct||void 0,garmentImageUrl:e.dataset.kitfitGarment||void 0,buttonText:e.dataset.kitfitButton||d.buttonText};new b(e,o)})}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",v):v(),window.KitFitWidget=b})();})();
 //# sourceMappingURL=kitfit.js.map

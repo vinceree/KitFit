@@ -1,5 +1,14 @@
 export type ScenePreset = "alpine" | "coastal" | "forest" | "urban";
 export type PlanTier = "starter" | "growth" | "pro";
+export type ProductCategory =
+  | "jersey"
+  | "bib_shorts"
+  | "jacket"
+  | "vest"
+  | "baselayer"
+  | "longsleeve"
+  | "accessories"
+  | "other";
 
 export interface Brand {
   id: string;
@@ -24,6 +33,16 @@ export interface Product {
   name: string;
   image_url: string;
   product_url: string | null;
+  category: ProductCategory | null;
+  created_at: string;
+}
+
+export interface ProductPairing {
+  id: string;
+  brand_id: string;
+  product_id: string;
+  complement_id: string;
+  is_default: boolean;
   created_at: string;
 }
 

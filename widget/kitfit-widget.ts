@@ -249,6 +249,54 @@ interface KitFitConfig {
     .kf-powered a { color: #64748b; text-decoration: none; }
     .kf-powered a:hover { text-decoration: underline; }
 
+    .kf-complements { margin-bottom: 20px; }
+    .kf-complements-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .kf-complements-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .kf-complement-card {
+      flex-shrink: 0;
+      width: 80px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+    }
+    .kf-complement-card:hover { border-color: #94a3b8; }
+    .kf-complement-card.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .kf-complement-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+    }
+    .kf-complement-card .kf-complement-name {
+      font-size: 10px;
+      font-weight: 500;
+      color: #475569;
+      padding: 4px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .kf-complement-card .kf-complement-default {
+      font-size: 9px;
+      color: #3b82f6;
+      text-align: center;
+      padding-bottom: 4px;
+    }
+
     .kf-saved-photos { margin-bottom: 12px; }
     .kf-saved-label {
       font-size: 11px;
@@ -373,6 +421,14 @@ interface KitFitConfig {
     return new File([arr], name, { type: mime });
   }
 
+  interface Complement {
+    id: string;
+    name: string;
+    imageUrl: string;
+    category: string | null;
+    isDefault: boolean;
+  }
+
   // ── Widget class ───────────────────────────────────────────────
   class KitFitWidget {
     private config: KitFitConfig & typeof DEFAULTS;
@@ -380,6 +436,8 @@ interface KitFitConfig {
     private personFile: File | null = null;
     private bikeFile: File | null = null;
     private selectedScene: string = "alpine";
+    private complements: Complement[] = [];
+    private selectedComplement: Complement | null = null;
 
     constructor(el: HTMLElement, config: KitFitConfig) {
       this.config = { ...DEFAULTS, ...config };
@@ -453,6 +511,11 @@ interface KitFitConfig {
                 </button>
               `
               ).join("")}
+            </div>
+
+            <div id="kf-complements" class="kf-complements" style="display:none">
+              <div class="kf-complements-label">Complete the look</div>
+              <div class="kf-complements-grid" id="kf-complements-grid"></div>
             </div>
 
             <div id="kf-error" class="kf-error" style="display:none"></div>
@@ -617,15 +680,8 @@ interface KitFitConfig {
     }
 
     private async fetchGarmentImage(): Promise<File | null> {
-      const url = this.config.garmentImageUrl;
-      if (!url) return null;
-      try {
-        const resp = await fetch(url);
-        const blob = await resp.blob();
-        return new File([blob], "garment.jpg", { type: blob.type });
-      } catch {
-        return null;
-      }
+      if (!this.config.garmentImageUrl) return null;
+      return this.fetchImageFromUrl(this.config.garmentImageUrl, "garment.jpg");
     }
 
     private async generate() {
@@ -646,11 +702,22 @@ interface KitFitConfig {
           );
         }
 
+        let complementFile: File | null = null;
+        if (this.selectedComplement) {
+          complementFile = await this.fetchImageFromUrl(
+            this.selectedComplement.imageUrl,
+            "complement.jpg"
+          );
+        }
+
         const formData = new FormData();
         formData.append("api_key", this.config.apiKey);
         formData.append("scene_preset", this.selectedScene);
         formData.append("person_image", this.personFile);
         formData.append("garment_image", garmentFile);
+        if (complementFile) {
+          formData.append("complement_image", complementFile);
+        }
         if (this.config.productId) {
           formData.append("product_id", this.config.productId);
         }
@@ -795,10 +862,83 @@ interface KitFitConfig {
       });
     }
 
+    private async fetchComplements() {
+      if (!this.config.productId || !this.config.apiUrl) return;
+      try {
+        const resp = await fetch(
+          `${this.config.apiUrl}/api/products/${this.config.productId}/complements`
+        );
+        if (!resp.ok) return;
+        const data = await resp.json();
+        this.complements = data.complements || [];
+        this.selectedComplement =
+          this.complements.find((c) => c.isDefault) || null;
+        this.renderComplements();
+      } catch {
+        /* silently skip — complements are optional */
+      }
+    }
+
+    private renderComplements() {
+      const container = this.root.querySelector(
+        "#kf-complements"
+      ) as HTMLElement;
+      const grid = this.root.querySelector(
+        "#kf-complements-grid"
+      ) as HTMLElement;
+      if (!container || !grid) return;
+
+      if (this.complements.length === 0) {
+        container.style.display = "none";
+        return;
+      }
+
+      container.style.display = "block";
+      grid.innerHTML = this.complements
+        .map(
+          (c) => `
+        <div class="kf-complement-card${this.selectedComplement?.id === c.id ? " selected" : ""}" data-complement-id="${c.id}">
+          <img src="${c.imageUrl}" alt="${c.name}">
+          <div class="kf-complement-name">${c.name}</div>
+          ${c.isDefault ? '<div class="kf-complement-default">recommended</div>' : ""}
+        </div>
+      `
+        )
+        .join("");
+
+      grid.querySelectorAll(".kf-complement-card").forEach((card) => {
+        card.addEventListener("click", () => {
+          const id = (card as HTMLElement).dataset.complementId;
+          const comp = this.complements.find((c) => c.id === id);
+          if (comp) {
+            if (this.selectedComplement?.id === comp.id) {
+              this.selectedComplement = null;
+            } else {
+              this.selectedComplement = comp;
+            }
+            this.renderComplements();
+          }
+        });
+      });
+    }
+
+    private async fetchImageFromUrl(url: string, name: string): Promise<File | null> {
+      try {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        return new File([blob], name, { type: blob.type });
+      } catch {
+        return null;
+      }
+    }
+
     private open() {
       (this.root.querySelector(".kf-overlay") as HTMLElement).classList.add(
         "open"
       );
+      if (this.complements.length === 0) {
+        this.fetchComplements();
+      }
     }
 
     private close() {

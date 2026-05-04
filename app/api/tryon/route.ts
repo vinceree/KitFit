@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     const personImage = formData.get("person_image") as File | null;
     const bikeImage = formData.get("bike_image") as File | null;
     const garmentImage = formData.get("garment_image") as File | null;
+    const complementImage = formData.get("complement_image") as File | null;
 
     if (!apiKey) {
       return json({ error: "api_key is required" }, 401);
@@ -118,12 +119,17 @@ export async function POST(request: NextRequest) {
       ? Buffer.from(await bikeImage.arrayBuffer()).toString("base64")
       : null;
 
+    const complementBase64 = complementImage
+      ? Buffer.from(await complementImage.arrayBuffer()).toString("base64")
+      : null;
+
     // Generate the try-on image
     const resultBase64 = await generateTryOn(
       personBase64,
       bikeBase64,
       garmentBase64,
-      scenePreset as ScenePreset
+      scenePreset as ScenePreset,
+      complementBase64
     );
 
     // Record try-on for usage tracking (no images or PII stored)

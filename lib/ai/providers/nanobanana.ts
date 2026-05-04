@@ -21,7 +21,8 @@ export async function generateWithNanoBanana(
   personImageBase64: string,
   bikeImageBase64: string | null,
   garmentImageBase64: string,
-  scenePreset: ScenePreset
+  scenePreset: ScenePreset,
+  complementImageBase64: string | null = null
 ): Promise<string> {
   const apiKey = process.env.NANOBANANA_API_KEY;
   if (!apiKey) {
@@ -38,20 +39,43 @@ export async function generateWithNanoBanana(
     const bikeUrl = bikeImageBase64
       ? await uploadTemp(supabase, bikeImageBase64, "bike", tempPaths)
       : null;
+    const complementUrl = complementImageBase64
+      ? await uploadTemp(supabase, complementImageBase64, "complement", tempPaths)
+      : null;
 
     // 2. Build prompt and image URL list
     const { prompt, negativePrompt } = buildPrompt(scenePreset);
 
     const imageUrls = [personUrl, garmentUrl];
+    if (complementUrl) imageUrls.push(complementUrl);
     if (bikeUrl) imageUrls.push(bikeUrl);
+
+    const imageDesc: string[] = [
+      "\nThe first reference image is the person.",
+      "The second is the primary cycling garment to wear.",
+    ];
+    if (complementUrl && bikeUrl) {
+      imageDesc.push(
+        "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
+        "The fourth is the person's bike."
+      );
+    } else if (complementUrl) {
+      imageDesc.push(
+        "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
+        "No bike photo provided — place the person on a generic high-end road bike."
+      );
+    } else if (bikeUrl) {
+      imageDesc.push("The third image is the person's bike.");
+    } else {
+      imageDesc.push(
+        "No bike photo provided — place the person on a generic high-end road bike."
+      );
+    }
 
     const fullPrompt = [
       prompt,
       `\nAvoid the following: ${negativePrompt}`,
-      "\nThe first reference image is the person. The second is the cycling jersey/kit to wear.",
-      bikeUrl
-        ? "The third image is the person's bike."
-        : "No bike photo provided — place the person on a generic high-end road bike.",
+      ...imageDesc,
     ].join("");
 
     // 3. Submit generation task

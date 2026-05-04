@@ -13,7 +13,8 @@ export async function generateWithGemini(
   personImageBase64: string,
   bikeImageBase64: string | null,
   garmentImageBase64: string,
-  scenePreset: ScenePreset
+  scenePreset: ScenePreset,
+  complementImageBase64: string | null = null
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -49,6 +50,18 @@ export async function generateWithGemini(
       },
     },
   ];
+
+  if (complementImageBase64) {
+    parts.push(
+      { text: "Complementary garment — dress the person in BOTH garments together:" },
+      {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: complementImageBase64,
+        },
+      }
+    );
+  }
 
   if (bikeImageBase64) {
     parts.push(
