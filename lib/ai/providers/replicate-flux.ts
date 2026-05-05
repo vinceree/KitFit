@@ -3,16 +3,16 @@ import { buildPrompt } from "../prompts";
 import type { ScenePreset } from "@/lib/supabase/types";
 
 const REPLICATE_API_BASE = "https://api.replicate.com/v1";
-const MODEL_VERSION = "black-forest-labs/flux-kontext-dev";
+const MODEL_ID = "black-forest-labs/flux-kontext-dev";
 const POLL_INTERVAL_MS = 3_000;
-const MAX_POLL_ATTEMPTS = 120; // 6 minutes max
+const MAX_POLL_ATTEMPTS = 120;
 
 export async function generateWithReplicateFlux(
   personImageBase64: string,
-  bikeImageBase64: string | null,
+  _bikeImageBase64: string | null,
   garmentImageBase64: string,
   scenePreset: ScenePreset,
-  complementImageBase64: string | null = null
+  _complementImageBase64: string | null = null
 ): Promise<string> {
   const apiToken = process.env.REPLICATE_API_TOKEN;
   if (!apiToken) {
@@ -25,52 +25,32 @@ export async function generateWithReplicateFlux(
   try {
     const personUrl = await uploadTemp(supabase, personImageBase64, "person", tempPaths);
     const garmentUrl = await uploadTemp(supabase, garmentImageBase64, "garment", tempPaths);
-    const bikeUrl = bikeImageBase64
-      ? await uploadTemp(supabase, bikeImageBase64, "bike", tempPaths)
-      : null;
-    const complementUrl = complementImageBase64
-      ? await uploadTemp(supabase, complementImageBase64, "complement", tempPaths)
-      : null;
 
-    const { prompt } = buildPrompt(scenePreset);
-
-    const garmentDesc = complementUrl
-      ? "Dress the person in BOTH the primary cycling garment AND the complementary garment shown in the reference images."
-      : "Dress the person in the cycling garment shown in the reference image.";
-
-    const bikeDesc = bikeUrl
-      ? "Place the person riding the exact bike shown in the reference."
-      : "Place the person riding a high-end road bike.";
+    const { prompt: scenePrompt } = buildPrompt(scenePreset);
 
     const fluxPrompt = [
-      "Transform this image: ",
-      garmentDesc,
-      " " + bikeDesc,
-      " Preserve the person's face, body type, and skin tone exactly.",
-      " The jersey/kit must show exact colors, patterns, and logos from the garment reference.",
-      " " + prompt,
+      "Edit this photo: dress the person in the cycling jersey/kit visible at this URL: " + garmentUrl + ".",
+      " Preserve the person's face, body type, hair, and skin tone exactly as they are.",
+      " The jersey must show the exact colors, patterns, and logos from the garment image — do not invent or alter the design.",
+      " Place the person in a natural cycling riding position on a high-end road bike.",
+      " The jersey should fit naturally with proper fabric draping and realistic shadows.",
+      " " + scenePrompt,
     ].join("");
-
-    const imageInputs: string[] = [personUrl, garmentUrl];
-    if (complementUrl) imageInputs.push(complementUrl);
-    if (bikeUrl) imageInputs.push(bikeUrl);
 
     const input: Record<string, unknown> = {
       prompt: fluxPrompt,
-      image_url: personUrl,
-      aspect_ratio: "3:4",
+      input_image: personUrl,
+      aspect_ratio: "match_input_image",
       output_format: "jpg",
       output_quality: 90,
-      safety_tolerance: 5,
+      guidance: 3.5,
+      num_inference_steps: 30,
+      go_fast: true,
+      disable_safety_checker: true,
     };
 
-    // FLUX Kontext supports multiple reference images via input_images
-    if (imageInputs.length > 1) {
-      input.input_images = imageInputs;
-    }
-
     const prediction = await createPrediction(apiToken, input);
-    const resultUrl = await pollPrediction(apiToken, prediction.id);
+    const resultUrl = await getResult(apiToken, prediction);
 
     const imageResp = await fetch(resultUrl);
     if (!imageResp.ok) {
@@ -85,11 +65,18 @@ export async function generateWithReplicateFlux(
   }
 }
 
+interface PredictionResult {
+  id: string;
+  status: string;
+  output?: string | string[];
+  error?: string;
+}
+
 async function createPrediction(
   apiToken: string,
   input: Record<string, unknown>
-): Promise<{ id: string }> {
-  const resp = await fetch(`${REPLICATE_API_BASE}/models/${MODEL_VERSION}/predictions`, {
+): Promise<PredictionResult> {
+  const resp = await fetch(`${REPLICATE_API_BASE}/models/${MODEL_ID}/predictions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
@@ -104,13 +91,21 @@ async function createPrediction(
     throw new Error(`Replicate prediction failed (${resp.status}): ${err}`);
   }
 
-  const data = await resp.json();
+  return resp.json();
+}
 
-  if (data.status === "succeeded" && data.output) {
-    return { id: data.id, ...data };
+async function getResult(
+  apiToken: string,
+  prediction: PredictionResult
+): Promise<string> {
+  if (prediction.status === "succeeded") {
+    return extractOutputUrl(prediction);
+  }
+  if (prediction.status === "failed") {
+    throw new Error(`Replicate generation failed: ${prediction.error || "unknown error"}`);
   }
 
-  return { id: data.id };
+  return pollPrediction(apiToken, prediction.id);
 }
 
 async function pollPrediction(
@@ -128,15 +123,11 @@ async function pollPrediction(
       throw new Error(`Replicate poll failed (${resp.status})`);
     }
 
-    const data = await resp.json();
+    const data: PredictionResult = await resp.json();
 
     switch (data.status) {
-      case "succeeded": {
-        const output = data.output;
-        if (Array.isArray(output)) return output[0];
-        if (typeof output === "string") return output;
-        throw new Error("Replicate succeeded but returned unexpected output format");
-      }
+      case "succeeded":
+        return extractOutputUrl(data);
       case "failed":
         throw new Error(`Replicate generation failed: ${data.error || "unknown error"}`);
       case "canceled":
@@ -144,12 +135,17 @@ async function pollPrediction(
       case "starting":
       case "processing":
         break;
-      default:
-        break;
     }
   }
 
   throw new Error("Replicate generation timed out after 6 minutes");
+}
+
+function extractOutputUrl(prediction: PredictionResult): string {
+  const output = prediction.output;
+  if (Array.isArray(output) && output.length > 0) return output[0];
+  if (typeof output === "string") return output;
+  throw new Error("Replicate succeeded but returned no output");
 }
 
 async function uploadTemp(
