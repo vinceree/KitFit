@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/client";
 import { generateTryOn } from "@/lib/ai/generate";
+import { checkImageQuality } from "@/lib/ai/quality-check";
 import { getMonthlyLimit } from "@/lib/rate-limit";
 import type { ScenePreset, PlanTier } from "@/lib/supabase/types";
 
@@ -123,14 +124,26 @@ export async function POST(request: NextRequest) {
       ? Buffer.from(await complementImage.arrayBuffer()).toString("base64")
       : null;
 
-    // Generate the try-on image
-    const resultBase64 = await generateTryOn(
+    // Generate the try-on image, with quality gate (1 retry if check fails)
+    let resultBase64 = await generateTryOn(
       personBase64,
       bikeBase64,
       garmentBase64,
       scenePreset as ScenePreset,
       complementBase64
     );
+
+    const qualityResult = await checkImageQuality(resultBase64);
+    if (!qualityResult.passed) {
+      console.log("Quality check failed, retrying. Violations:", qualityResult.violations);
+      resultBase64 = await generateTryOn(
+        personBase64,
+        bikeBase64,
+        garmentBase64,
+        scenePreset as ScenePreset,
+        complementBase64
+      );
+    }
 
     // Record try-on for usage tracking (no images or PII stored)
     await supabase.from("try_ons").insert({
