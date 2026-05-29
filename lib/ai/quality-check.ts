@@ -80,6 +80,12 @@ export async function checkImageQuality(
       }
     }
 
+    if (violations.length > 0) {
+      console.log("Quality check FAILED:", violations.join(", "));
+    } else {
+      console.log("Quality check PASSED");
+    }
+
     return { passed: violations.length === 0, violations };
   } catch (err) {
     console.error("Quality check error (allowing image through):", err);
