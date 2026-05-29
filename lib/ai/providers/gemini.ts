@@ -32,7 +32,7 @@ export async function generateWithGemini(
   > = [
     { text: fullPrompt },
     {
-      text: "Reference photo of the person:",
+      text: "IMAGE 1 — THE PERSON (use THIS face, body, skin tone, and hair in the output. This is the ONLY face that should appear):",
     },
     {
       inlineData: {
@@ -41,7 +41,7 @@ export async function generateWithGemini(
       },
     },
     {
-      text: "Cycling jersey/kit to wear:",
+      text: "IMAGE 2 — THE GARMENT ONLY (extract ONLY the clothing design, colors, patterns, and logos from this image. COMPLETELY IGNORE the person/model wearing it — do NOT use their face, body, or pose):",
     },
     {
       inlineData: {
