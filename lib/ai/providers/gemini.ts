@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { buildPrompt } from "../prompts";
 import type { ScenePreset } from "@/lib/supabase/types";
 
-const MODEL = "gemini-2.0-flash-preview-image-generation";
+const MODEL = "gemini-2.5-flash-image";
 
 /**
  * Gemini-based virtual try-on generation.
