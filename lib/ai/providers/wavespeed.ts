@@ -87,14 +87,23 @@ export async function generateWithWaveSpeed(
     }
 
     const submitData = await submitResp.json();
-    const taskId = submitData.id;
-    const pollUrl = submitData.urls?.get;
+    console.log("WaveSpeed response:", JSON.stringify(submitData, null, 2));
 
-    if (!taskId || !pollUrl) {
-      throw new Error("WaveSpeed did not return a task ID or poll URL");
+    const taskId = submitData.id || submitData.data?.id;
+    const pollUrl = submitData.urls?.get || submitData.data?.urls?.get;
+
+    if (!taskId && !pollUrl) {
+      if (submitData.outputs && submitData.outputs.length > 0) {
+        const imageResp = await fetch(submitData.outputs[0]);
+        if (!imageResp.ok) throw new Error(`Failed to fetch result: ${imageResp.status}`);
+        const imageBuffer = Buffer.from(await imageResp.arrayBuffer());
+        return imageBuffer.toString("base64");
+      }
+      throw new Error("WaveSpeed did not return a task ID, poll URL, or outputs");
     }
 
-    const resultImageUrl = await pollForResult(apiKey, pollUrl);
+    const finalPollUrl = pollUrl || `https://api.wavespeed.ai/api/v3/predictions/${taskId}/result`;
+    const resultImageUrl = await pollForResult(apiKey, finalPollUrl);
 
     const imageResp = await fetch(resultImageUrl);
     if (!imageResp.ok) {
