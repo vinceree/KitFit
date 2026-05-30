@@ -1,4 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
+import { buildPrompt } from "./prompts";
+import type { ScenePreset } from "@/lib/supabase/types";
 
 const MODEL = "gemini-2.5-flash";
 
@@ -7,33 +9,31 @@ export interface QualityCheckResult {
   violations: string[];
 }
 
-const QUALITY_CHECKLIST = `Analyze this AI-generated cycling photo and check for these violations. For each item, answer YES (violation present) or NO (looks good).
+function buildCheckPrompt(scenePreset: ScenePreset): string {
+  const { prompt, negativePrompt } = buildPrompt(scenePreset);
 
-1. SMILING: Is the person smiling, grinning, or showing teeth?
-2. EYE_CONTACT: Is the person looking directly at the camera / viewer?
-3. OPEN_JERSEY: Is the cycling jersey unzipped, unbuttoned, or hanging open?
-4. WRONG_ANGLE: Is the shot taken from a strange or unflattering angle (e.g. extreme low angle, directly from above, fisheye distortion)?
-5. MULTIPLE_PEOPLE: Are there multiple people or bystanders visible in the image?
-6. OFF_BIKE: Is the person standing next to the bike instead of riding it?
-7. DISTORTED_FACE: Is the person's face visibly distorted, warped, or unnatural?
-8. WRONG_FOOTWEAR: Is the person wearing sneakers, sandals, or non-cycling shoes?
+  return `You are a quality control reviewer for AI-generated cycling photos.
 
-Respond ONLY with a JSON object in this exact format, no other text:
-{"smiling": false, "eye_contact": false, "open_jersey": false, "wrong_angle": false, "multiple_people": false, "off_bike": false, "distorted_face": false, "wrong_footwear": false}`;
+Analyze the attached image and check whether it violates ANY of the rules below. These are the exact rules the image was supposed to follow.
 
-const VIOLATION_LABELS: Record<string, string> = {
-  smiling: "Person is smiling",
-  eye_contact: "Person looking at camera",
-  open_jersey: "Jersey is open/unzipped",
-  wrong_angle: "Strange camera angle",
-  multiple_people: "Multiple people visible",
-  off_bike: "Person not riding bike",
-  distorted_face: "Face distortion",
-  wrong_footwear: "Non-cycling footwear",
-};
+GENERATION PROMPT (what the image SHOULD look like):
+${prompt}
+
+NEGATIVE PROMPT (things that must NOT appear):
+${negativePrompt}
+
+Check the image carefully against ALL of these rules. Then respond ONLY with a JSON object in this exact format, no other text:
+{"passed": true, "violations": []}
+
+If the image violates any rules, set passed to false and list each violation as a short string in the violations array. For example:
+{"passed": false, "violations": ["person is smiling", "front-facing camera angle", "gravel road surface"]}
+
+Be strict but fair — only flag clear, obvious violations, not borderline cases.`;
+}
 
 export async function checkImageQuality(
-  imageBase64: string
+  imageBase64: string,
+  scenePreset: ScenePreset = "alpine"
 ): Promise<QualityCheckResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -42,6 +42,7 @@ export async function checkImageQuality(
 
   try {
     const ai = new GoogleGenAI({ apiKey });
+    const checkPrompt = buildCheckPrompt(scenePreset);
 
     const response = await ai.models.generateContent({
       model: MODEL,
@@ -49,7 +50,7 @@ export async function checkImageQuality(
         {
           role: "user",
           parts: [
-            { text: QUALITY_CHECKLIST },
+            { text: checkPrompt },
             {
               inlineData: {
                 mimeType: "image/jpeg",
@@ -66,27 +67,26 @@ export async function checkImageQuality(
       return { passed: true, violations: [] };
     }
 
-    const jsonMatch = text.match(/\{[^}]+\}/);
+    const jsonMatch = text.match(/\{[^}]*\}/s);
     if (!jsonMatch) {
       return { passed: true, violations: [] };
     }
 
-    const checks = JSON.parse(jsonMatch[0]) as Record<string, boolean>;
-    const violations: string[] = [];
+    const result = JSON.parse(jsonMatch[0]) as {
+      passed: boolean;
+      violations: string[];
+    };
 
-    for (const [key, failed] of Object.entries(checks)) {
-      if (failed && VIOLATION_LABELS[key]) {
-        violations.push(VIOLATION_LABELS[key]);
-      }
-    }
-
-    if (violations.length > 0) {
-      console.log("Quality check FAILED:", violations.join(", "));
+    if (!result.passed && result.violations?.length > 0) {
+      console.log("Quality check FAILED:", result.violations.join(", "));
     } else {
       console.log("Quality check PASSED");
     }
 
-    return { passed: violations.length === 0, violations };
+    return {
+      passed: result.passed !== false,
+      violations: result.violations || [],
+    };
   } catch (err) {
     console.error("Quality check error (allowing image through):", err);
     return { passed: true, violations: [] };

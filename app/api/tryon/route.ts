@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       complementBase64
     );
 
-    const qualityResult = await checkImageQuality(resultBase64);
+    const qualityResult = await checkImageQuality(resultBase64, scenePreset as ScenePreset);
     if (!qualityResult.passed) {
       console.log("Quality check failed, retrying. Violations:", qualityResult.violations);
       resultBase64 = await generateTryOn(
