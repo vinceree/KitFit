@@ -21,6 +21,7 @@ const SHARED_NEGATIVE_PROMPT =
   "low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, " +
   "sandals, bare feet, non-cycling footwear, " +
   "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
+  "open jersey, unzipped jersey, unbuttoned jersey, jersey hanging open, " +
   "front-facing camera angle, head-on shot, rider facing directly toward camera, " +
   "rider not aligned with road direction, rider at angle to the street, body facing different direction than road, " +
   "accessories from garment model, chains, necklaces, bracelets, jewelry, piercings not in person photo, " +
@@ -114,6 +115,10 @@ GARMENT MODEL ISOLATION (MANDATORY):
 ROAD SURFACE (MANDATORY):
 - The ground must ALWAYS be smooth asphalt road surface
 - NEVER generate gravel, cobblestones, dirt, unpaved roads, or grass paths
+
+JERSEY FIT (MANDATORY):
+- The cycling jersey must be fully closed and zipped up at all times
+- NEVER generate an open, unzipped, or unbuttoned jersey
 
 CRITICAL REQUIREMENTS:
 - Preserve the person's face, body type, skin tone, and physical features exactly as in the reference photo
