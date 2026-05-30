@@ -20,7 +20,12 @@ const SHARED_NEGATIVE_PROMPT =
   "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, " +
   "low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, " +
   "sandals, bare feet, non-cycling footwear, " +
-  "smiling, grinning, looking at camera, posing, eye contact with viewer";
+  "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
+  "front-facing camera angle, head-on shot, rider facing directly toward camera, " +
+  "rider not aligned with road direction, rider at angle to the street, body facing different direction than road, " +
+  "accessories from garment model, chains, necklaces, bracelets, jewelry, piercings not in person photo, " +
+  "tattoos from garment model, tattoos not present in person reference photo, " +
+  "gravel surface, cobblestones, dirt road, unpaved road, grass path — road surface must be smooth asphalt only";
 
 export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
   alpine: {
@@ -94,6 +99,21 @@ BRAND AESTHETIC (straede — Nordic minimalist cycling):
 - Lighting: natural light only — golden hour (soft warm low sun), blue hour (cool dim dawn/dusk), or overcast (soft even, no harsh shadows)
 - Composition: clean lines, plenty of negative space, never cluttered — "less is more"
 - Camera: shot on 35mm film, Leica M11 style, f/2.8 aperture for soft backgrounds, subtle film grain
+
+CAMERA ANGLE (MANDATORY):
+- The shot must ALWAYS be from a side angle or three-quarter angle — NEVER from directly in front (head-on)
+- The rider's body and bike must be aligned with the direction of the road — the rider must be traveling ALONG the road, not at an angle to it
+- The composition should look like a candid shot taken as the rider passes by, not a posed portrait
+
+GARMENT MODEL ISOLATION (MANDATORY):
+- ONLY extract the clothing design from the garment image — colors, patterns, logos, fabric texture
+- Do NOT transfer any other features from the garment model: no tattoos, no accessories (chains, necklaces, bracelets, jewelry), no piercings, no hairstyle
+- Only include tattoos if they are visible in the PERSON reference photo
+- Only include accessories if they are visible in the PERSON reference photo
+
+ROAD SURFACE (MANDATORY):
+- The ground must ALWAYS be smooth asphalt road surface
+- NEVER generate gravel, cobblestones, dirt, unpaved roads, or grass paths
 
 CRITICAL REQUIREMENTS:
 - Preserve the person's face, body type, skin tone, and physical features exactly as in the reference photo
