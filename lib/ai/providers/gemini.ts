@@ -24,60 +24,32 @@ export async function generateWithGemini(
   const ai = new GoogleGenAI({ apiKey });
   const { prompt, negativePrompt } = buildPrompt(scenePreset);
 
-  const fullPrompt = `${prompt}\n\nAvoid the following: ${negativePrompt}`;
+  // Two prompt structures to compare:
+  // - "interleaved" (default): label, image, label, image — each label next to its image
+  // - "block": NanoBanana-style — one combined text block first, then all images in order
+  const structure = process.env.GEMINI_PROMPT_STRUCTURE || "interleaved";
 
   const parts: Array<
     | { text: string }
     | { inlineData: { mimeType: string; data: string } }
-  > = [
-    { text: fullPrompt },
-    {
-      text: "IMAGE 1 — THE PERSON (use THIS face, body, skin tone, and hair in the output. This is the ONLY face that should appear):",
-    },
-    {
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: personImageBase64,
-      },
-    },
-    {
-      text: "IMAGE 2 — THE GARMENT ONLY (extract ONLY the clothing design, colors, patterns, and logos from this image. COMPLETELY IGNORE the person/model wearing it — do NOT use their face, body, or pose):",
-    },
-    {
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: garmentImageBase64,
-      },
-    },
-  ];
-
-  if (complementImageBase64) {
-    parts.push(
-      { text: "Complementary garment — dress the person in BOTH garments together:" },
-      {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: complementImageBase64,
-        },
-      }
-    );
-  }
-
-  if (bikeImageBase64) {
-    parts.push(
-      { text: "The person's bike:" },
-      {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: bikeImageBase64,
-        },
-      }
-    );
-  } else {
-    parts.push({
-      text: "No bike photo provided — place the person on a generic high-end road bike.",
-    });
-  }
+  > =
+    structure === "block"
+      ? buildBlockParts(
+          prompt,
+          negativePrompt,
+          personImageBase64,
+          garmentImageBase64,
+          bikeImageBase64,
+          complementImageBase64
+        )
+      : buildInterleavedParts(
+          prompt,
+          negativePrompt,
+          personImageBase64,
+          garmentImageBase64,
+          bikeImageBase64,
+          complementImageBase64
+        );
 
   const response = await ai.models.generateContent({
     model: MODEL,
@@ -114,4 +86,102 @@ export async function generateWithGemini(
   throw new Error(
     "Gemini response did not contain a generated image"
   );
+}
+
+type Part =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
+
+function img(data: string): Part {
+  return { inlineData: { mimeType: "image/jpeg", data } };
+}
+
+/**
+ * Default structure: text label immediately before each image.
+ */
+function buildInterleavedParts(
+  prompt: string,
+  negativePrompt: string,
+  person: string,
+  garment: string,
+  bike: string | null,
+  complement: string | null
+): Part[] {
+  const fullPrompt = `${prompt}\n\nAvoid the following: ${negativePrompt}`;
+
+  const parts: Part[] = [
+    { text: fullPrompt },
+    {
+      text: "IMAGE 1 — THE PERSON (use THIS face, body, skin tone, and hair in the output. This is the ONLY face that should appear):",
+    },
+    img(person),
+    {
+      text: "IMAGE 2 — THE GARMENT ONLY (extract ONLY the clothing design, colors, patterns, and logos from this image. COMPLETELY IGNORE the person/model wearing it — do NOT use their face, body, or pose):",
+    },
+    img(garment),
+  ];
+
+  if (complement) {
+    parts.push(
+      { text: "Complementary garment — dress the person in BOTH garments together:" },
+      img(complement)
+    );
+  }
+
+  if (bike) {
+    parts.push({ text: "The person's bike:" }, img(bike));
+  } else {
+    parts.push({
+      text: "No bike photo provided — place the person on a generic high-end road bike.",
+    });
+  }
+
+  return parts;
+}
+
+/**
+ * NanoBanana-style structure: one combined text block describing all images,
+ * then all images appended in order.
+ */
+function buildBlockParts(
+  prompt: string,
+  negativePrompt: string,
+  person: string,
+  garment: string,
+  bike: string | null,
+  complement: string | null
+): Part[] {
+  const imageDesc: string[] = [
+    "\nThe first reference image is the person.",
+    "The second is the primary cycling garment to wear.",
+  ];
+  if (complement && bike) {
+    imageDesc.push(
+      "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
+      "The fourth is the person's bike."
+    );
+  } else if (complement) {
+    imageDesc.push(
+      "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
+      "No bike photo provided — place the person on a generic high-end road bike."
+    );
+  } else if (bike) {
+    imageDesc.push("The third image is the person's bike.");
+  } else {
+    imageDesc.push(
+      "No bike photo provided — place the person on a generic high-end road bike."
+    );
+  }
+
+  const fullPrompt = [
+    prompt,
+    `\nAvoid the following: ${negativePrompt}`,
+    ...imageDesc,
+  ].join("");
+
+  const parts: Part[] = [{ text: fullPrompt }, img(person), img(garment)];
+  if (complement) parts.push(img(complement));
+  if (bike) parts.push(img(bike));
+
+  return parts;
 }
