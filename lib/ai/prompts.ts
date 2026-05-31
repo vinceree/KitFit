@@ -22,8 +22,9 @@ const SHARED_NEGATIVE_PROMPT =
   "sandals, bare feet, non-cycling footwear, " +
   "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
   "open jersey, unzipped jersey, unbuttoned jersey, jersey hanging open, " +
-  "front-facing camera angle, head-on shot, rider facing directly toward camera, " +
+  "flat dead-on head-on view, rider facing straight into the camera lens, perfectly symmetrical front shot, " +
   "rider sideways across the road, rider perpendicular to road, bike pointing across the street, rider not traveling along the road direction, " +
+  "tiny distant subject, rider too small in frame, garment not clearly visible, " +
   "accessories from garment model, chains, necklaces, bracelets, jewelry, piercings not in person photo, " +
   "tattoos from garment model, tattoos not present in person reference photo, " +
   "gravel surface, cobblestones, dirt road, unpaved road, grass path — road surface must be smooth asphalt only";
@@ -31,11 +32,12 @@ const SHARED_NEGATIVE_PROMPT =
 export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
   alpine: {
     name: "Alpine",
-    description: "Epic mountain serpentine, misty golden hour",
+    description: "Mountain road, misty golden hour",
     positivePrompt:
-      "cinematic wide shot, lone cyclist on a winding mountain serpentine road, dramatic misty mountain peaks in background, " +
+      "lone cyclist riding along a mountain road, the rider prominent and clearly visible in the frame, " +
+      "dramatic misty mountain peaks softly blurred in the background, " +
       "golden hour soft warm low sun, muted earthy tones, pine forests, alpine meadows in sage and moss green, " +
-      "minimalist composition, vast landscape with tiny subject, plenty of negative space, " +
+      "shallow depth of field with soft bokeh background, " +
       "Leica M11 photography style, 35mm film grain, f/2.8 aperture, desaturated color grading, " +
       "Nordic minimalist aesthetic, high-end editorial cycling photography",
     negativePrompt: SHARED_NEGATIVE_PROMPT,
@@ -44,9 +46,10 @@ export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
     name: "Coastal",
     description: "Coastal cliffs, soft overcast light",
     positivePrompt:
-      "cinematic wide shot, lone cyclist riding along a coastal cliff road, vast ocean in background, " +
+      "lone cyclist riding along a coastal cliff road, the rider prominent and clearly visible in the frame, " +
+      "vast ocean softly blurred in the background, " +
       "soft overcast natural light with even illumination, muted dusted blue and stone grey tones, " +
-      "minimalist composition, clean lines, negative space, calm and serene atmosphere, " +
+      "calm and serene atmosphere, shallow depth of field with soft bokeh background, " +
       "Leica M11 photography style, 35mm film grain, f/2.8 aperture, desaturated earthy color palette, " +
       "Nordic minimalist aesthetic, high-end editorial cycling photography",
     negativePrompt: SHARED_NEGATIVE_PROMPT,
@@ -55,10 +58,9 @@ export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
     name: "Forest",
     description: "Tree-lined road, soft dappled light",
     positivePrompt:
-      "cinematic shot, lone cyclist on a quiet tree-lined road through dense forest, " +
+      "lone cyclist riding along a quiet tree-lined road through forest, the rider prominent and clearly visible in the frame, " +
       "soft dappled natural light filtering through canopy, muted moss green and espresso brown tones, " +
-      "peaceful atmosphere of silence and focus, minimalist composition, clean lines, " +
-      "shallow depth of field with soft bokeh background, " +
+      "peaceful atmosphere of silence and focus, shallow depth of field with soft bokeh background, " +
       "Leica M11 photography style, 35mm film grain, f/2.8 aperture, desaturated earthy color grading, " +
       "Nordic minimalist aesthetic, high-end editorial cycling photography",
     negativePrompt: SHARED_NEGATIVE_PROMPT,
@@ -67,9 +69,9 @@ export const SCENE_PRESETS: Record<ScenePreset, ScenePresetConfig> = {
     name: "Urban",
     description: "Modern city, cool morning light",
     positivePrompt:
-      "candid documentary style, lone cyclist in an urban setting with modern clean architecture, " +
-      "cool tones, soft overcast morning light, quiet empty streets, " +
-      "urban minimalism, stone grey and pale neutral palette, calm professional atmosphere, " +
+      "lone cyclist riding through a modern urban setting with clean architecture, the rider prominent and clearly visible in the frame, " +
+      "cool tones, soft overcast morning light, quiet empty streets softly blurred behind, " +
+      "stone grey and pale neutral palette, calm professional atmosphere, shallow depth of field, " +
       "Fujifilm X100V aesthetic, subtle film grain, f/2.8 aperture, desaturated muted colors, " +
       "Nordic minimalist aesthetic, high-end fashion cycling editorial photography",
     negativePrompt: SHARED_NEGATIVE_PROMPT,
@@ -98,18 +100,24 @@ BRAND AESTHETIC (straede — Nordic minimalist cycling):
 - Color grading: muted, desaturated, earthy tones — espresso browns, moss/sage greens, stone greys, dusted blues, natural whites
 - Mood: calm, professional, authentic — like a high-end indie film, not a sports commercial
 - Lighting: natural light only — golden hour (soft warm low sun), blue hour (cool dim dawn/dusk), or overcast (soft even, no harsh shadows)
-- Composition: clean lines, plenty of negative space, never cluttered — "less is more"
+- Composition: clean, uncluttered background, with the rider as the clear focal point
 - Camera: shot on 35mm film, Leica M11 style, f/2.8 aperture for soft backgrounds, subtle film grain
 
+FRAMING (MANDATORY):
+- The rider must be PROMINENT in the frame — large enough that the jersey's colors, patterns, and logos are clearly visible
+- Use a medium shot / portrait crop focused on the rider, NOT a distant wide landscape with a tiny subject
+- The background should be present but softly blurred (shallow depth of field), keeping attention on the rider and garment
+
 CAMERA ANGLE (MANDATORY):
-- The shot must ALWAYS be from a side angle or three-quarter angle — NEVER from directly in front (head-on)
-- The composition should look like a candid shot taken as the rider passes by, not a posed portrait
+- The shot must be a three-quarter FRONT angle or a side angle — these show the garment well
+- NEVER use a flat, dead-on, perfectly symmetrical head-on view with the rider staring into the lens
+- The composition should look like a candid shot taken as the rider passes by, not a stiff posed portrait
 
 RIDER DIRECTION (MANDATORY):
-- The rider and bike MUST be traveling ALONG the road in the same direction the road goes
-- The bike's front wheel must point in the direction of the road, NOT across it
-- NEVER position the rider sideways or perpendicular to the road — this looks unnatural
-- Think of it as a real cyclist riding down the road: the bike follows the road's direction
+- The rider and bike must be traveling ALONG the road, following the road's direction
+- The road should lead diagonally through the frame in the SAME direction the bike points
+- NEVER position the rider sideways or perpendicular to a road that recedes straight away from the camera
+- Think of it as a real cyclist riding down the road: the bike and the road run in the same direction
 
 GARMENT MODEL ISOLATION (MANDATORY):
 - ONLY extract the clothing design from the garment image — colors, patterns, logos, fabric texture
