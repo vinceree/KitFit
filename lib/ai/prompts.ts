@@ -23,7 +23,7 @@ const SHARED_NEGATIVE_PROMPT =
   "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
   "open jersey, unzipped jersey, unbuttoned jersey, jersey hanging open, " +
   "front-facing camera angle, head-on shot, rider facing directly toward camera, " +
-  "rider not aligned with road direction, rider at angle to the street, body facing different direction than road, " +
+  "rider sideways across the road, rider perpendicular to road, bike pointing across the street, rider not traveling along the road direction, " +
   "accessories from garment model, chains, necklaces, bracelets, jewelry, piercings not in person photo, " +
   "tattoos from garment model, tattoos not present in person reference photo, " +
   "gravel surface, cobblestones, dirt road, unpaved road, grass path — road surface must be smooth asphalt only";
@@ -103,8 +103,13 @@ BRAND AESTHETIC (straede — Nordic minimalist cycling):
 
 CAMERA ANGLE (MANDATORY):
 - The shot must ALWAYS be from a side angle or three-quarter angle — NEVER from directly in front (head-on)
-- The rider's body and bike must be aligned with the direction of the road — the rider must be traveling ALONG the road, not at an angle to it
 - The composition should look like a candid shot taken as the rider passes by, not a posed portrait
+
+RIDER DIRECTION (MANDATORY):
+- The rider and bike MUST be traveling ALONG the road in the same direction the road goes
+- The bike's front wheel must point in the direction of the road, NOT across it
+- NEVER position the rider sideways or perpendicular to the road — this looks unnatural
+- Think of it as a real cyclist riding down the road: the bike follows the road's direction
 
 GARMENT MODEL ISOLATION (MANDATORY):
 - ONLY extract the clothing design from the garment image — colors, patterns, logos, fabric texture
