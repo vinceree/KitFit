@@ -46,12 +46,17 @@ export interface ProductPairing {
   created_at: string;
 }
 
+export type TryOnStatus = "processing" | "completed" | "failed";
+
 export interface TryOn {
   id: string;
   brand_id: string;
   product_id: string | null;
   scene_preset: ScenePreset;
   result_image_url: string | null;
+  job_id: string | null;
+  status: TryOnStatus;
+  error_message: string | null;
   created_at: string;
 }
 
@@ -104,9 +109,12 @@ export interface Database {
       };
       try_ons: {
         Row: TryOn;
-        Insert: Omit<TryOn, "id" | "created_at"> & {
+        Insert: Omit<TryOn, "id" | "created_at" | "status" | "job_id" | "error_message"> & {
           id?: string;
           created_at?: string;
+          job_id?: string | null;
+          status?: TryOnStatus;
+          error_message?: string | null;
         };
         Update: Partial<Omit<TryOn, "id">>;
         Relationships: [

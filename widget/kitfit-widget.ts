@@ -18,6 +18,26 @@ interface KitFitConfig {
     buttonText: "Try it on your bike →",
   };
 
+  // ── LocalStorage keys ──────────────────────────────────────────
+  const STORAGE_PENDING = "kf-pending-job";
+  const STORAGE_RESULT = "kf-completed-job";
+  const POLL_INTERVAL = 3000;
+  const JOB_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+  interface PendingJob {
+    jobId: string;
+    apiUrl: string;
+    pageUrl: string;
+    startedAt: number;
+  }
+
+  interface CompletedJob {
+    jobId: string;
+    resultImage: string;
+    pageUrl: string;
+    completedAt: number;
+  }
+
   const STYLES = `
     :host {
       all: initial;
@@ -198,6 +218,38 @@ interface KitFitConfig {
       font-size: 14px;
       color: #64748b;
     }
+
+    .kf-dismiss-hint {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      animation: kf-fade-in 0.3s ease-out;
+    }
+    @keyframes kf-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .kf-dismiss-text {
+      font-size: 14px;
+      color: #475569;
+      font-weight: 500;
+    }
+    .kf-dismiss-subtext {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .kf-dismiss-btn {
+      margin-top: 12px;
+      padding: 10px 24px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .kf-dismiss-btn:hover { background: #e2e8f0; }
 
     .kf-result { text-align: center; }
     .kf-result-img {
@@ -429,6 +481,195 @@ interface KitFitConfig {
     isDefault: boolean;
   }
 
+  // ── Notification toast (injected into host page, outside Shadow DOM) ──
+
+  function injectToastStyles() {
+    if (document.getElementById("kf-toast-styles")) return;
+    const style = document.createElement("style");
+    style.id = "kf-toast-styles";
+    style.textContent = `
+      #kf-toast-notification {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 2147483647;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 360px;
+        cursor: pointer;
+        animation: kf-toast-in 0.4s ease-out;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        border: 1px solid #e2e8f0;
+      }
+      #kf-toast-notification img {
+        width: 56px;
+        height: 56px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+      #kf-toast-notification .kf-toast-body { flex: 1; }
+      #kf-toast-notification .kf-toast-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 2px;
+      }
+      #kf-toast-notification .kf-toast-subtitle {
+        font-size: 12px;
+        color: #64748b;
+      }
+      #kf-toast-notification .kf-toast-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #94a3b8;
+        line-height: 1;
+        padding: 4px;
+      }
+      #kf-toast-notification .kf-toast-close:hover { color: #0f172a; }
+      @keyframes kf-toast-in {
+        from { transform: translateY(80px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes kf-toast-out {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(80px); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function showToast(result: CompletedJob, onClick?: () => void) {
+    dismissToast();
+    injectToastStyles();
+
+    const toast = document.createElement("div");
+    toast.id = "kf-toast-notification";
+    toast.innerHTML = `
+      <img src="${result.resultImage}" alt="Try-on result">
+      <div class="kf-toast-body">
+        <div class="kf-toast-title">Your try-on is ready!</div>
+        <div class="kf-toast-subtitle">Click to view your image</div>
+      </div>
+      <button class="kf-toast-close">&times;</button>
+    `;
+
+    toast.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".kf-toast-close")) {
+        dismissToast();
+        return;
+      }
+      dismissToast();
+      if (onClick) {
+        onClick();
+      } else if (result.pageUrl && result.pageUrl !== window.location.href) {
+        window.location.href = result.pageUrl;
+      }
+    });
+
+    document.body.appendChild(toast);
+
+    // Auto-dismiss after 30 seconds
+    setTimeout(() => dismissToast(), 30000);
+  }
+
+  function dismissToast() {
+    const existing = document.getElementById("kf-toast-notification");
+    if (existing) {
+      existing.style.animation = "kf-toast-out 0.3s ease-in forwards";
+      setTimeout(() => existing.remove(), 300);
+    }
+  }
+
+  // ── Global background polling for pending jobs ──────────────────
+
+  let globalPollingActive = false;
+
+  function checkPendingJobs() {
+    if (globalPollingActive) return;
+
+    const pendingJson = localStorage.getItem(STORAGE_PENDING);
+    if (!pendingJson) return;
+
+    let pending: PendingJob;
+    try {
+      pending = JSON.parse(pendingJson);
+    } catch {
+      localStorage.removeItem(STORAGE_PENDING);
+      return;
+    }
+
+    if (Date.now() - pending.startedAt > JOB_TIMEOUT) {
+      localStorage.removeItem(STORAGE_PENDING);
+      return;
+    }
+
+    globalPollingActive = true;
+    pollJob(pending);
+  }
+
+  async function pollJob(pending: PendingJob) {
+    const { jobId, apiUrl } = pending;
+
+    while (globalPollingActive) {
+      try {
+        const resp = await fetch(`${apiUrl}/api/tryon/jobs/${jobId}`);
+        if (!resp.ok) break;
+        const data = await resp.json();
+
+        if (data.status === "completed" && data.resultImage) {
+          const result: CompletedJob = {
+            jobId,
+            resultImage: data.resultImage,
+            pageUrl: pending.pageUrl,
+            completedAt: Date.now(),
+          };
+          localStorage.setItem(STORAGE_RESULT, JSON.stringify(result));
+          localStorage.removeItem(STORAGE_PENDING);
+          globalPollingActive = false;
+
+          // Dispatch event for widget instances to pick up
+          document.dispatchEvent(
+            new CustomEvent("kf-job-complete", { detail: result })
+          );
+          return;
+        }
+
+        if (data.status === "failed") {
+          localStorage.removeItem(STORAGE_PENDING);
+          globalPollingActive = false;
+          document.dispatchEvent(
+            new CustomEvent("kf-job-error", {
+              detail: { jobId, error: data.error || "Generation failed" },
+            })
+          );
+          return;
+        }
+
+        // Still processing/pending — check for timeout
+        if (Date.now() - pending.startedAt > JOB_TIMEOUT) {
+          localStorage.removeItem(STORAGE_PENDING);
+          globalPollingActive = false;
+          return;
+        }
+      } catch {
+        // Network error — retry on next interval
+      }
+
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    }
+  }
+
   // ── Widget class ───────────────────────────────────────────────
   class KitFitWidget {
     private config: KitFitConfig & typeof DEFAULTS;
@@ -438,15 +679,93 @@ interface KitFitConfig {
     private selectedScene: string = "alpine";
     private complements: Complement[] = [];
     private selectedComplement: Complement | null = null;
+    private activeJobId: string | null = null;
+    private modalOpen = false;
 
     constructor(el: HTMLElement, config: KitFitConfig) {
       this.config = { ...DEFAULTS, ...config };
-      // Strip trailing slash to avoid double-slash in API URLs
       if (this.config.apiUrl.endsWith("/")) {
         this.config.apiUrl = this.config.apiUrl.slice(0, -1);
       }
       this.root = el.attachShadow({ mode: "open" });
       this.render();
+      this.listenForJobEvents();
+      this.checkForCompletedResult();
+    }
+
+    private listenForJobEvents() {
+      document.addEventListener("kf-job-complete", ((e: CustomEvent) => {
+        const result = e.detail as CompletedJob;
+        this.onJobComplete(result);
+      }) as EventListener);
+
+      document.addEventListener("kf-job-error", ((e: CustomEvent) => {
+        const { jobId, error } = e.detail;
+        if (this.activeJobId === jobId) {
+          this.onJobError(error);
+        }
+      }) as EventListener);
+    }
+
+    private checkForCompletedResult() {
+      const resultJson = localStorage.getItem(STORAGE_RESULT);
+      if (!resultJson) return;
+
+      let result: CompletedJob;
+      try {
+        result = JSON.parse(resultJson);
+      } catch {
+        localStorage.removeItem(STORAGE_RESULT);
+        return;
+      }
+
+      if (result.pageUrl === window.location.href) {
+        localStorage.removeItem(STORAGE_RESULT);
+        this.open();
+        this.showResult(result.resultImage);
+      } else {
+        showToast(result);
+      }
+    }
+
+    private onJobComplete(result: CompletedJob) {
+      if (this.modalOpen && this.activeJobId === result.jobId) {
+        // Modal is open on the same page — show result directly
+        this.showResult(result.resultImage);
+        localStorage.removeItem(STORAGE_RESULT);
+      } else if (result.pageUrl === window.location.href) {
+        // Same page but modal closed — show toast that re-opens widget
+        showToast(result, () => {
+          localStorage.removeItem(STORAGE_RESULT);
+          this.open();
+          this.showResult(result.resultImage);
+        });
+      } else {
+        // Different page — show toast with navigation link
+        showToast(result);
+      }
+      this.activeJobId = null;
+    }
+
+    private onJobError(error: string) {
+      this.activeJobId = null;
+      const $ = (sel: string) => this.root.querySelector(sel) as HTMLElement;
+      if (this.modalOpen) {
+        $("#kf-loading").style.display = "none";
+        $("#kf-form").style.display = "block";
+        const errorEl = $("#kf-error");
+        errorEl.textContent = error;
+        errorEl.style.display = "block";
+      }
+    }
+
+    private showResult(imageUrl: string) {
+      const $ = (sel: string) => this.root.querySelector(sel) as HTMLElement;
+      $("#kf-loading").style.display = "none";
+      $("#kf-form").style.display = "none";
+      $("#kf-result").style.display = "block";
+      (this.root.querySelector("#kf-result-img") as HTMLImageElement).src =
+        imageUrl;
     }
 
     private render() {
@@ -526,7 +845,12 @@ interface KitFitConfig {
           <div id="kf-loading" class="kf-loading" style="display:none">
             <div class="kf-spinner"></div>
             <div class="kf-loading-text">Generating your try-on image...</div>
-            <div class="kf-upload-hint" style="margin-top:8px">This usually takes 10-15 seconds</div>
+            <div class="kf-upload-hint" style="margin-top:8px">This usually takes 10-20 seconds</div>
+            <div class="kf-dismiss-hint" id="kf-dismiss-hint" style="display:none">
+              <div class="kf-dismiss-text">You can close this and keep browsing.</div>
+              <div class="kf-dismiss-subtext">We'll notify you when your image is ready.</div>
+              <button class="kf-dismiss-btn" id="kf-dismiss-btn">Continue Browsing</button>
+            </div>
           </div>
 
           <div id="kf-result" class="kf-result" style="display:none">
@@ -604,6 +928,9 @@ interface KitFitConfig {
 
       // Generate
       $("#kf-generate").addEventListener("click", () => this.generate());
+
+      // Continue Browsing (dismiss during loading)
+      $("#kf-dismiss-btn").addEventListener("click", () => this.close());
 
       // Result actions
       $("#kf-download").addEventListener("click", () => this.download());
@@ -689,13 +1016,22 @@ interface KitFitConfig {
 
       if (!this.personFile) return;
 
-      // Show loading
+      // Show loading state
       $("#kf-form").style.display = "none";
       $("#kf-loading").style.display = "block";
       $("#kf-error").style.display = "none";
+      $("#kf-dismiss-hint").style.display = "none";
+
+      // Show "continue browsing" option after 3 seconds
+      setTimeout(() => {
+        const hint = this.root.querySelector("#kf-dismiss-hint") as HTMLElement;
+        if (hint && this.activeJobId) {
+          hint.style.display = "block";
+        }
+      }, 3000);
 
       try {
-        let garmentFile = await this.fetchGarmentImage();
+        const garmentFile = await this.fetchGarmentImage();
         if (!garmentFile) {
           throw new Error(
             "Could not load the product image. Please try again."
@@ -710,11 +1046,16 @@ interface KitFitConfig {
           );
         }
 
+        // Generate a job ID for async tracking
+        const jobId = crypto.randomUUID();
+        this.activeJobId = jobId;
+
         const formData = new FormData();
         formData.append("api_key", this.config.apiKey);
         formData.append("scene_preset", this.selectedScene);
         formData.append("person_image", this.personFile);
         formData.append("garment_image", garmentFile);
+        formData.append("job_id", jobId);
         if (complementFile) {
           formData.append("complement_image", complementFile);
         }
@@ -725,31 +1066,56 @@ interface KitFitConfig {
           formData.append("bike_image", this.bikeFile);
         }
 
-        const resp = await fetch(
-          `${this.config.apiUrl}/api/tryon`,
-          { method: "POST", body: formData }
-        );
+        // Store pending job in localStorage for cross-page persistence
+        const pendingJob: PendingJob = {
+          jobId,
+          apiUrl: this.config.apiUrl,
+          pageUrl: window.location.href,
+          startedAt: Date.now(),
+        };
+        localStorage.setItem(STORAGE_PENDING, JSON.stringify(pendingJob));
 
-        if (!resp.ok) {
-          let message = "Generation failed";
-          try {
-            const err = await resp.json();
-            message = err.error || message;
-          } catch {
-            // Response body may be empty (e.g. timeout)
-          }
-          throw new Error(message);
-        }
+        // Fire the API request — server processes to completion even if we navigate away
+        const fetchPromise = fetch(`${this.config.apiUrl}/api/tryon`, {
+          method: "POST",
+          body: formData,
+        });
 
-        const data = await resp.json();
+        // Handle immediate server errors (validation, auth, rate limit)
+        fetchPromise
+          .then(async (resp) => {
+            if (!resp.ok && this.activeJobId === jobId) {
+              let message = "Generation failed";
+              try {
+                const err = await resp.json();
+                message = err.error || message;
+              } catch {
+                /* empty body */
+              }
+              localStorage.removeItem(STORAGE_PENDING);
+              globalPollingActive = false;
+              this.activeJobId = null;
 
-        // Show result — image is a base64 data URL, lives only in the browser
-        $("#kf-loading").style.display = "none";
-        $("#kf-result").style.display = "block";
-        (
-          this.root.querySelector("#kf-result-img") as HTMLImageElement
-        ).src = data.result_image;
+              if (this.modalOpen) {
+                $("#kf-loading").style.display = "none";
+                $("#kf-form").style.display = "block";
+                const errorEl = $("#kf-error");
+                errorEl.textContent = message;
+                errorEl.style.display = "block";
+              }
+            }
+            // If resp.ok — generation completed. Polling will pick up the result.
+          })
+          .catch(() => {
+            // Network error or page navigation — server may still be processing.
+            // Polling (on this or a future page) will detect the result.
+          });
+
+        // Start polling for the result independently
+        globalPollingActive = true;
+        pollJob(pendingJob);
       } catch (err: unknown) {
+        this.activeJobId = null;
         const message =
           err instanceof Error ? err.message : "Something went wrong";
         $("#kf-loading").style.display = "none";
@@ -764,10 +1130,31 @@ interface KitFitConfig {
       const img = this.root.querySelector(
         "#kf-result-img"
       ) as HTMLImageElement;
-      const a = document.createElement("a");
-      a.href = img.src;
-      a.download = "kitfit-tryon.jpg";
-      a.click();
+      const src = img.src;
+
+      if (src.startsWith("data:")) {
+        // Base64 data URL — direct download
+        const a = document.createElement("a");
+        a.href = src;
+        a.download = "kitfit-tryon.jpg";
+        a.click();
+      } else {
+        // External URL — fetch as blob for download
+        fetch(src)
+          .then((r) => r.blob())
+          .then((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "kitfit-tryon.jpg";
+            a.click();
+            URL.revokeObjectURL(url);
+          })
+          .catch(() => {
+            // Fallback: open in new tab
+            window.open(src, "_blank");
+          });
+      }
     }
 
     private reset() {
@@ -776,6 +1163,7 @@ interface KitFitConfig {
       $("#kf-form").style.display = "block";
       this.personFile = null;
       this.bikeFile = null;
+      this.activeJobId = null;
 
       const personArea = this.root.querySelector(
         "#kf-person-upload"
@@ -936,6 +1324,7 @@ interface KitFitConfig {
       (this.root.querySelector(".kf-overlay") as HTMLElement).classList.add(
         "open"
       );
+      this.modalOpen = true;
       if (this.complements.length === 0) {
         this.fetchComplements();
       }
@@ -945,14 +1334,15 @@ interface KitFitConfig {
       (
         this.root.querySelector(".kf-overlay") as HTMLElement
       ).classList.remove("open");
+      this.modalOpen = false;
     }
   }
 
-  // Auto-init: find all <div data-kitfit> elements and initialize
+  // ── Auto-init ───────────────────────────────────────────────────
   function init() {
     document.querySelectorAll("[data-kitfit]").forEach((el) => {
       const htmlEl = el as HTMLElement;
-      if (htmlEl.shadowRoot) return; // Already initialized
+      if (htmlEl.shadowRoot) return;
 
       const config: KitFitConfig = {
         apiKey: htmlEl.dataset.kitfitKey || "",
@@ -964,6 +1354,9 @@ interface KitFitConfig {
 
       new KitFitWidget(htmlEl, config);
     });
+
+    // Check for pending jobs from previous pages (handles cross-page navigation)
+    checkPendingJobs();
   }
 
   if (document.readyState === "loading") {
@@ -972,6 +1365,5 @@ interface KitFitConfig {
     init();
   }
 
-  // Expose for manual initialization
   (window as unknown as Record<string, unknown>).KitFitWidget = KitFitWidget;
 })();

@@ -5,8 +5,6 @@ import { checkImageQuality } from "@/lib/ai/quality-check";
 import { getMonthlyLimit } from "@/lib/rate-limit";
 import type { ScenePreset, PlanTier } from "@/lib/supabase/types";
 
-// Allow up to ~13 minutes for NanoBanana polling + image fetch during high-volume queues.
-// (Vercel Pro hard cap is 800s; Enterprise can go higher.)
 export const maxDuration = 800;
 
 const VALID_PRESETS = new Set<ScenePreset>([
@@ -31,6 +29,9 @@ function json(body: unknown, status = 200) {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = createServiceClient();
+  let jobId: string | null = null;
+
   try {
     const formData = await request.formData();
 
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     const bikeImage = formData.get("bike_image") as File | null;
     const garmentImage = formData.get("garment_image") as File | null;
     const complementImage = formData.get("complement_image") as File | null;
+    jobId = formData.get("job_id") as string | null;
 
     if (!apiKey) {
       return json({ error: "api_key is required" }, 401);
@@ -58,9 +60,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createServiceClient();
-
-    // Authenticate via API key
     const { data: keyData, error: keyError } = await supabase
       .from("api_keys")
       .select("brand_id, is_active")
@@ -73,7 +72,6 @@ export async function POST(request: NextRequest) {
 
     const brandId = keyData.brand_id;
 
-    // Get brand for rate limiting
     const { data: brand, error: brandError } = await supabase
       .from("brands")
       .select("plan_tier")
@@ -84,7 +82,6 @@ export async function POST(request: NextRequest) {
       return json({ error: "Brand not found" }, 404);
     }
 
-    // Check monthly usage
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -93,6 +90,7 @@ export async function POST(request: NextRequest) {
       .from("try_ons")
       .select("*", { count: "exact", head: true })
       .eq("brand_id", brandId)
+      .eq("status", "completed")
       .gte("created_at", startOfMonth.toISOString());
 
     const limit = getMonthlyLimit(brand.plan_tier as PlanTier);
@@ -107,7 +105,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert images to base64
+    // If async mode, insert job row with processing status
+    if (jobId) {
+      await supabase.from("try_ons").insert({
+        brand_id: brandId,
+        product_id: productId || null,
+        scene_preset: scenePreset as ScenePreset,
+        result_image_url: null,
+        job_id: jobId,
+        status: "processing",
+      });
+    }
+
     const personBase64 = Buffer.from(
       await personImage.arrayBuffer()
     ).toString("base64");
@@ -124,7 +133,6 @@ export async function POST(request: NextRequest) {
       ? Buffer.from(await complementImage.arrayBuffer()).toString("base64")
       : null;
 
-    // Generate the try-on image, with quality gate (1 retry if check fails)
     let resultBase64 = await generateTryOn(
       personBase64,
       bikeBase64,
@@ -145,21 +153,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Record try-on for usage tracking (no images or PII stored)
-    await supabase.from("try_ons").insert({
-      brand_id: brandId,
-      product_id: productId || null,
-      scene_preset: scenePreset as ScenePreset,
-      result_image_url: null,
-    });
+    if (jobId) {
+      // Upload result to storage so the poll endpoint can serve it
+      const buffer = Buffer.from(resultBase64, "base64");
+      const storagePath = `results/${jobId}.jpg`;
+      await supabase.storage.from("tryon-temp").upload(storagePath, buffer, {
+        contentType: "image/jpeg",
+        cacheControl: "1800",
+      });
+      const { data: { publicUrl } } = supabase.storage
+        .from("tryon-temp")
+        .getPublicUrl(storagePath);
 
-    // Return image as base64 data URL directly to the client.
-    // Nothing is persisted server-side — the image only lives in the user's browser.
+      await supabase
+        .from("try_ons")
+        .update({ status: "completed", result_image_url: publicUrl })
+        .eq("job_id", jobId);
+    } else {
+      await supabase.from("try_ons").insert({
+        brand_id: brandId,
+        product_id: productId || null,
+        scene_preset: scenePreset as ScenePreset,
+        result_image_url: null,
+      });
+    }
+
     return json({
       result_image: `data:image/jpeg;base64,${resultBase64}`,
       scene_preset: scenePreset,
+      ...(jobId && { job_id: jobId }),
     });
   } catch (error) {
+    if (jobId) {
+      const message =
+        error instanceof Error ? error.message : "Generation failed";
+      await supabase
+        .from("try_ons")
+        .update({ status: "failed", error_message: message })
+        .eq("job_id", jobId)
+        .then(() => {});
+    }
     console.error("Try-on generation error:", error);
     return json({ error: "Internal server error during generation" }, 500);
   }
