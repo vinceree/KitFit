@@ -592,11 +592,23 @@ interface KitFitConfig {
   }
 
   // ── Global background polling for pending jobs ──────────────────
+  // Uses AbortController so starting a new poll cancels any stale one.
 
-  let globalPollingActive = false;
+  let pollAbort: AbortController | null = null;
+
+  function stopPolling() {
+    pollAbort?.abort();
+    pollAbort = null;
+  }
+
+  function startPolling(pending: PendingJob) {
+    stopPolling();
+    pollAbort = new AbortController();
+    pollJob(pending, pollAbort.signal);
+  }
 
   function checkPendingJobs() {
-    if (globalPollingActive) return;
+    if (pollAbort && !pollAbort.signal.aborted) return;
 
     const pendingJson = localStorage.getItem(STORAGE_PENDING);
     if (!pendingJson) return;
@@ -614,16 +626,17 @@ interface KitFitConfig {
       return;
     }
 
-    globalPollingActive = true;
-    pollJob(pending);
+    startPolling(pending);
   }
 
-  async function pollJob(pending: PendingJob) {
+  async function pollJob(pending: PendingJob, signal: AbortSignal) {
     const { jobId, apiUrl } = pending;
 
-    while (globalPollingActive) {
+    while (!signal.aborted) {
       try {
-        const resp = await fetch(`${apiUrl}/api/tryon/jobs/${jobId}`);
+        const resp = await fetch(`${apiUrl}/api/tryon/jobs/${jobId}`, {
+          signal,
+        });
         if (!resp.ok) break;
         const data = await resp.json();
 
@@ -636,9 +649,7 @@ interface KitFitConfig {
           };
           localStorage.setItem(STORAGE_RESULT, JSON.stringify(result));
           localStorage.removeItem(STORAGE_PENDING);
-          globalPollingActive = false;
 
-          // Dispatch event for widget instances to pick up
           document.dispatchEvent(
             new CustomEvent("kf-job-complete", { detail: result })
           );
@@ -647,7 +658,6 @@ interface KitFitConfig {
 
         if (data.status === "failed") {
           localStorage.removeItem(STORAGE_PENDING);
-          globalPollingActive = false;
           document.dispatchEvent(
             new CustomEvent("kf-job-error", {
               detail: { jobId, error: data.error || "Generation failed" },
@@ -656,14 +666,12 @@ interface KitFitConfig {
           return;
         }
 
-        // Still processing/pending — check for timeout
         if (Date.now() - pending.startedAt > JOB_TIMEOUT) {
           localStorage.removeItem(STORAGE_PENDING);
-          globalPollingActive = false;
           return;
         }
       } catch {
-        // Network error — retry on next interval
+        if (signal.aborted) return;
       }
 
       await new Promise((r) => setTimeout(r, POLL_INTERVAL));
@@ -729,6 +737,7 @@ interface KitFitConfig {
     }
 
     private onJobComplete(result: CompletedJob) {
+      jobHandledByWidget = true;
       if (this.modalOpen && this.activeJobId === result.jobId) {
         // Modal is open on the same page — show result directly
         this.showResult(result.resultImage);
@@ -1079,8 +1088,8 @@ interface KitFitConfig {
         // Start background polling as the CROSS-PAGE fallback. If the user
         // navigates away, the script on the next page picks up STORAGE_PENDING
         // and keeps polling until the server finishes and the result appears.
-        globalPollingActive = true;
-        pollJob(pendingJob);
+        // startPolling cancels any stale poll loop from a previous generation.
+        startPolling(pendingJob);
 
         // Meanwhile, await the direct response. As long as we're still on this
         // page (whether the modal is open or the user clicked "Continue
@@ -1119,7 +1128,7 @@ interface KitFitConfig {
         // We have the result directly — stop the polling fallback and clear the
         // pending marker so it doesn't trigger a duplicate notification.
         this.activeJobId = null;
-        globalPollingActive = false;
+        stopPolling();
         localStorage.removeItem(STORAGE_PENDING);
 
         if (this.modalOpen) {
@@ -1143,7 +1152,7 @@ interface KitFitConfig {
         }
       } catch (err: unknown) {
         this.activeJobId = null;
-        globalPollingActive = false;
+        stopPolling();
         localStorage.removeItem(STORAGE_PENDING);
         const message =
           err instanceof Error ? err.message : "Something went wrong";
@@ -1369,6 +1378,23 @@ interface KitFitConfig {
       this.modalOpen = false;
     }
   }
+
+  // ── Global fallback: show toast on pages that have no widget ────
+  // Widget instances listen for kf-job-complete themselves. On pages without
+  // a data-kitfit element (e.g. the homepage), this handler ensures the user
+  // still sees the notification.
+  let jobHandledByWidget = false;
+
+  document.addEventListener("kf-job-complete", ((e: CustomEvent) => {
+    // Give widget instances a microtask to claim the event first.
+    jobHandledByWidget = false;
+    queueMicrotask(() => {
+      if (!jobHandledByWidget) {
+        const result = e.detail as CompletedJob;
+        showToast(result);
+      }
+    });
+  }) as EventListener);
 
   // ── Auto-init ───────────────────────────────────────────────────
   function init() {

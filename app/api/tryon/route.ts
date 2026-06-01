@@ -207,6 +207,16 @@ export async function POST(request: NextRequest) {
     if (jobId) {
       const message =
         error instanceof Error ? error.message : "Generation failed";
+      // Upload error marker to storage so the poll endpoint can detect failures
+      // (works even without the DB migration).
+      await supabase.storage
+        .from("tryon-temp")
+        .upload(`results/${jobId}.error`, Buffer.from(message), {
+          contentType: "text/plain",
+          upsert: true,
+        })
+        .catch(() => {});
+      // Also try the DB update (optional, needs migration 003).
       await supabase
         .from("try_ons")
         .update({ status: "failed", error_message: message })
