@@ -1066,7 +1066,8 @@ interface KitFitConfig {
           formData.append("bike_image", this.bikeFile);
         }
 
-        // Store pending job in localStorage for cross-page persistence
+        // Store pending job in localStorage so that if the user navigates to
+        // another page, the script there can resume polling and notify them.
         const pendingJob: PendingJob = {
           jobId,
           apiUrl: this.config.apiUrl,
@@ -1075,54 +1076,85 @@ interface KitFitConfig {
         };
         localStorage.setItem(STORAGE_PENDING, JSON.stringify(pendingJob));
 
-        // Fire the API request — server processes to completion even if we navigate away
-        const fetchPromise = fetch(`${this.config.apiUrl}/api/tryon`, {
-          method: "POST",
-          body: formData,
-        });
-
-        // Handle immediate server errors (validation, auth, rate limit)
-        fetchPromise
-          .then(async (resp) => {
-            if (!resp.ok && this.activeJobId === jobId) {
-              let message = "Generation failed";
-              try {
-                const err = await resp.json();
-                message = err.error || message;
-              } catch {
-                /* empty body */
-              }
-              localStorage.removeItem(STORAGE_PENDING);
-              globalPollingActive = false;
-              this.activeJobId = null;
-
-              if (this.modalOpen) {
-                $("#kf-loading").style.display = "none";
-                $("#kf-form").style.display = "block";
-                const errorEl = $("#kf-error");
-                errorEl.textContent = message;
-                errorEl.style.display = "block";
-              }
-            }
-            // If resp.ok — generation completed. Polling will pick up the result.
-          })
-          .catch(() => {
-            // Network error or page navigation — server may still be processing.
-            // Polling (on this or a future page) will detect the result.
-          });
-
-        // Start polling for the result independently
+        // Start background polling as the CROSS-PAGE fallback. If the user
+        // navigates away, the script on the next page picks up STORAGE_PENDING
+        // and keeps polling until the server finishes and the result appears.
         globalPollingActive = true;
         pollJob(pendingJob);
+
+        // Meanwhile, await the direct response. As long as we're still on this
+        // page (whether the modal is open or the user clicked "Continue
+        // browsing"), this resolves with the image directly — no dependency on
+        // the database or storage. If the user navigates away, this fetch is
+        // aborted and the polling fallback above takes over on the next page.
+        let resp: Response;
+        try {
+          resp = await fetch(`${this.config.apiUrl}/api/tryon`, {
+            method: "POST",
+            body: formData,
+          });
+        } catch {
+          // Aborted by navigation, or a network error. If we're still here,
+          // let the polling fallback continue; otherwise this code is gone.
+          return;
+        }
+
+        // Ignore if this job was superseded (e.g. user hit "Try Again").
+        if (this.activeJobId !== jobId) return;
+
+        if (!resp.ok) {
+          let message = "Generation failed";
+          try {
+            const err = await resp.json();
+            message = err.error || message;
+          } catch {
+            /* empty body (e.g. timeout) */
+          }
+          throw new Error(message);
+        }
+
+        const data = await resp.json();
+        const resultImage: string = data.result_image;
+
+        // We have the result directly — stop the polling fallback and clear the
+        // pending marker so it doesn't trigger a duplicate notification.
+        this.activeJobId = null;
+        globalPollingActive = false;
+        localStorage.removeItem(STORAGE_PENDING);
+
+        if (this.modalOpen) {
+          // User is watching — show the result inline.
+          this.showResult(resultImage);
+        } else {
+          // User clicked "Continue browsing" but stayed on this page — notify
+          // them with a toast that re-opens the widget showing their image.
+          showToast(
+            {
+              jobId,
+              resultImage,
+              pageUrl: window.location.href,
+              completedAt: Date.now(),
+            },
+            () => {
+              this.open();
+              this.showResult(resultImage);
+            }
+          );
+        }
       } catch (err: unknown) {
         this.activeJobId = null;
+        globalPollingActive = false;
+        localStorage.removeItem(STORAGE_PENDING);
         const message =
           err instanceof Error ? err.message : "Something went wrong";
-        $("#kf-loading").style.display = "none";
-        $("#kf-form").style.display = "block";
-        const errorEl = $("#kf-error");
-        errorEl.textContent = message;
-        errorEl.style.display = "block";
+        // Only surface the error if the user is still looking at the modal.
+        if (this.modalOpen) {
+          $("#kf-loading").style.display = "none";
+          $("#kf-form").style.display = "block";
+          const errorEl = $("#kf-error");
+          errorEl.textContent = message;
+          errorEl.style.display = "block";
+        }
       }
     }
 

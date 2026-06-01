@@ -105,9 +105,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If async mode, insert job row with processing status
+    // If async mode, insert job row with processing status so the poll
+    // endpoint and any other page can track this generation.
     if (jobId) {
-      await supabase.from("try_ons").insert({
+      const { error: insertError } = await supabase.from("try_ons").insert({
         brand_id: brandId,
         product_id: productId || null,
         scene_preset: scenePreset as ScenePreset,
@@ -115,6 +116,15 @@ export async function POST(request: NextRequest) {
         job_id: jobId,
         status: "processing",
       });
+      if (insertError) {
+        // Most likely the 003_async_tryon migration hasn't been applied yet.
+        // Don't fail the request — same-page generation still returns the image
+        // directly. Cross-page notifications need the migration.
+        console.error(
+          "Async job tracking unavailable (run migration 003_async_tryon?):",
+          insertError.message
+        );
+      }
     }
 
     const personBase64 = Buffer.from(
@@ -154,21 +164,31 @@ export async function POST(request: NextRequest) {
     }
 
     if (jobId) {
-      // Upload result to storage so the poll endpoint can serve it
+      // Upload result to storage so another page (cross-page navigation) can
+      // fetch it via the poll endpoint. upsert in case of a retry.
       const buffer = Buffer.from(resultBase64, "base64");
       const storagePath = `results/${jobId}.jpg`;
-      await supabase.storage.from("tryon-temp").upload(storagePath, buffer, {
-        contentType: "image/jpeg",
-        cacheControl: "1800",
-      });
-      const { data: { publicUrl } } = supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("tryon-temp")
-        .getPublicUrl(storagePath);
+        .upload(storagePath, buffer, {
+          contentType: "image/jpeg",
+          cacheControl: "1800",
+          upsert: true,
+        });
+      if (uploadError) {
+        console.error("Result upload failed:", uploadError.message);
+      }
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("tryon-temp").getPublicUrl(storagePath);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from("try_ons")
         .update({ status: "completed", result_image_url: publicUrl })
         .eq("job_id", jobId);
+      if (updateError) {
+        console.error("Async job completion update failed:", updateError.message);
+      }
     } else {
       await supabase.from("try_ons").insert({
         brand_id: brandId,
