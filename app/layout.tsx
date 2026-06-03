@@ -17,7 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         {children}
-        <Script src="/widget/kitfit.js" strategy="afterInteractive" />
+        <Script src="/widget/kitfit.js" strategy="beforeInteractive" />
       </body>
     </html>
   );
