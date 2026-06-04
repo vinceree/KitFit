@@ -88,7 +88,7 @@ export async function generateWithNanoBanana(
       body: JSON.stringify({
         prompt: fullPrompt,
         imageUrls,
-        aspectRatio: "3:4",
+        aspectRatio: "4:5",
         resolution: "1K",
         outputFormat: "jpg",
       }),

@@ -74,7 +74,7 @@ export async function generateWithWaveSpeed(
       body: JSON.stringify({
         prompt: fullPrompt,
         images,
-        aspect_ratio: "3:4",
+        aspect_ratio: "4:5",
         resolution: "2k",
         output_format: "jpeg",
         enable_sync_mode: false,

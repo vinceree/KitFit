@@ -1031,13 +1031,12 @@ interface KitFitConfig {
       $("#kf-error").style.display = "none";
       $("#kf-dismiss-hint").style.display = "none";
 
-      // Show "continue browsing" option after 3 seconds
       setTimeout(() => {
         const hint = this.root.querySelector("#kf-dismiss-hint") as HTMLElement;
         if (hint && this.activeJobId) {
           hint.style.display = "block";
         }
-      }, 3000);
+      }, 1000);
 
       try {
         const garmentFile = await this.fetchGarmentImage();
