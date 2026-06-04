@@ -688,6 +688,7 @@ interface KitFitConfig {
     private complements: Complement[] = [];
     private selectedComplement: Complement | null = null;
     private activeJobId: string | null = null;
+    private lastResultImage: string | null = null;
     private modalOpen = false;
 
     constructor(el: HTMLElement, config: KitFitConfig) {
@@ -738,19 +739,17 @@ interface KitFitConfig {
 
     private onJobComplete(result: CompletedJob) {
       jobHandledByWidget = true;
+      this.lastResultImage = result.resultImage;
       if (this.modalOpen && this.activeJobId === result.jobId) {
-        // Modal is open on the same page — show result directly
         this.showResult(result.resultImage);
         localStorage.removeItem(STORAGE_RESULT);
       } else if (result.pageUrl === window.location.href) {
-        // Same page but modal closed — show toast that re-opens widget
         showToast(result, () => {
           localStorage.removeItem(STORAGE_RESULT);
           this.open();
           this.showResult(result.resultImage);
         });
       } else {
-        // Different page — show toast with navigation link
         showToast(result);
       }
       this.activeJobId = null;
@@ -1130,12 +1129,21 @@ interface KitFitConfig {
         stopPolling();
         localStorage.removeItem(STORAGE_PENDING);
 
+        this.lastResultImage = resultImage;
+
         if (this.modalOpen) {
-          // User is watching — show the result inline.
           this.showResult(resultImage);
         } else {
-          // User clicked "Continue browsing" but stayed on this page — notify
-          // them with a toast that re-opens the widget showing their image.
+          // Store so reopening the widget shows the result immediately
+          localStorage.setItem(
+            STORAGE_RESULT,
+            JSON.stringify({
+              jobId,
+              resultImage,
+              pageUrl: window.location.href,
+              completedAt: Date.now(),
+            } satisfies CompletedJob)
+          );
           showToast(
             {
               jobId,
@@ -1144,6 +1152,7 @@ interface KitFitConfig {
               completedAt: Date.now(),
             },
             () => {
+              localStorage.removeItem(STORAGE_RESULT);
               this.open();
               this.showResult(resultImage);
             }
@@ -1204,6 +1213,7 @@ interface KitFitConfig {
       this.personFile = null;
       this.bikeFile = null;
       this.activeJobId = null;
+      this.lastResultImage = null;
 
       const personArea = this.root.querySelector(
         "#kf-person-upload"
@@ -1365,6 +1375,13 @@ interface KitFitConfig {
         "open"
       );
       this.modalOpen = true;
+
+      if (this.lastResultImage) {
+        this.showResult(this.lastResultImage);
+        localStorage.removeItem(STORAGE_RESULT);
+        return;
+      }
+
       if (this.complements.length === 0) {
         this.fetchComplements();
       }
