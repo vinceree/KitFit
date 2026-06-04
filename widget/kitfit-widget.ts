@@ -1036,7 +1036,7 @@ interface KitFitConfig {
         if (hint && this.activeJobId) {
           hint.style.display = "block";
         }
-      }, 1000);
+      }, 500);
 
       try {
         const garmentFile = await this.fetchGarmentImage();
