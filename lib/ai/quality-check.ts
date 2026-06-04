@@ -12,7 +12,7 @@ const CHECK_PROMPT = `You are a strict quality reviewer for AI-generated cycling
 
 CHECKLIST — answer YES or NO for each:
 1. SOLO RIDER: Is there exactly ONE person in the image? (no bystanders, no other cyclists)
-2. HELMET: Is the rider wearing a cycling helmet?
+2. WHITE HELMET: Is the rider wearing a plain WHITE cycling helmet? (black helmet = FAIL, dark helmet = FAIL, colored helmet = FAIL)
 3. WHITE SHOES: Is the rider wearing plain WHITE cycling shoes? (black shoes = FAIL, colored shoes = FAIL)
 4. WHITE SOCKS: Is the rider wearing plain WHITE socks? (black socks = FAIL, colored socks = FAIL)
 5. ROAD SURFACE: Is the ground smooth asphalt? (gravel, dirt, cobblestones = FAIL)

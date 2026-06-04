@@ -18,7 +18,7 @@ const SHARED_NEGATIVE_PROMPT =
   "bright colors, neon, high saturation, sporty graphics, cluttered background, aggressive poses, " +
   "high contrast, glossy, plastic-look, studio lighting, flash photography, harsh shadows, " +
   "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, " +
-  "low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, " +
+  "low quality, blurry, distorted, no helmet, bareheaded, black helmet, dark helmet, colored helmet, sneakers, running shoes, casual shoes, " +
   "sandals, bare feet, non-cycling footwear, black shoes, black socks, colored shoes, colored socks, dark socks, " +
   "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
   "open jersey, unzipped jersey, unbuttoned jersey, jersey hanging open, " +
@@ -144,9 +144,8 @@ CRITICAL REQUIREMENTS:
 - The jersey must fit naturally on the person's body with proper fabric draping and shadows
 
 HELMET RULES (MANDATORY):
-- The person MUST always wear a cycling helmet in the generated image
-- If the person is wearing a helmet in the reference photo, preserve that exact helmet (color, shape, brand)
-- If the person is NOT wearing a helmet in the reference photo, add a plain white cycling helmet
+- The person MUST always wear a plain WHITE cycling helmet — regardless of what helmet appears in the reference photo
+- NEVER generate a black helmet, dark helmet, or colored helmet
 
 FOOTWEAR & SOCKS (MANDATORY):
 - The person MUST always wear plain white road cycling shoes (clip-in) — regardless of what shoes appear in the reference photo
