@@ -113,11 +113,13 @@ CAMERA ANGLE (MANDATORY):
 - NEVER use a flat, dead-on, perfectly symmetrical head-on view with the rider staring into the lens
 - The composition should look like a candid shot taken as the rider passes by, not a stiff posed portrait
 
-RIDER DIRECTION (MANDATORY):
+RIDER DIRECTION & ROAD PERSPECTIVE (MANDATORY):
 - The rider and bike must be traveling ALONG the road, following the road's direction
-- The road should lead diagonally through the frame in the SAME direction the bike points
-- NEVER position the rider sideways or perpendicular to a road that recedes straight away from the camera
-- Think of it as a real cyclist riding down the road: the bike and the road run in the same direction
+- The bike's front wheel must point along the road surface — if the road curves, the bike follows the curve
+- A line drawn from the rear wheel through the front wheel should follow the road's center line
+- The road and the bike must share the same perspective — they converge toward the same vanishing point
+- NEVER have the bike pointing toward the camera while the road runs off to the side
+- Think of it as a real photograph: the photographer stands beside the road and captures the cyclist riding past
 
 GARMENT MODEL ISOLATION (MANDATORY):
 - ONLY extract the clothing design from the garment image — colors, patterns, logos, fabric texture
