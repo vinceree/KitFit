@@ -19,7 +19,7 @@ const SHARED_NEGATIVE_PROMPT =
   "high contrast, glossy, plastic-look, studio lighting, flash photography, harsh shadows, " +
   "indoors, studio background, white background, standing off bike, abstract, cartoon, illustration, " +
   "low quality, blurry, distorted, no helmet, bareheaded, sneakers, running shoes, casual shoes, " +
-  "sandals, bare feet, non-cycling footwear, " +
+  "sandals, bare feet, non-cycling footwear, black shoes, black socks, colored shoes, colored socks, dark socks, " +
   "smiling, grinning, looking at camera, posing, eye contact with viewer, " +
   "open jersey, unzipped jersey, unbuttoned jersey, jersey hanging open, " +
   "flat dead-on head-on view, rider facing straight into the camera lens, perfectly symmetrical front shot, " +
@@ -148,10 +148,10 @@ HELMET RULES (MANDATORY):
 - If the person is wearing a helmet in the reference photo, preserve that exact helmet (color, shape, brand)
 - If the person is NOT wearing a helmet in the reference photo, add a plain white cycling helmet
 
-FOOTWEAR RULES (MANDATORY):
-- The person MUST always wear cycling shoes (clip-in road cycling shoes) in the generated image
-- If the person is wearing cycling shoes in the reference photo, preserve those exact shoes (color, style, brand)
-- If the person is NOT wearing cycling shoes in the reference photo, add plain white road cycling shoes
+FOOTWEAR & SOCKS (MANDATORY):
+- The person MUST always wear plain white road cycling shoes (clip-in) — regardless of what shoes appear in the reference photo
+- The person MUST always wear plain white cycling socks — regardless of what socks appear in the reference photo
+- NEVER generate black shoes, black socks, colored shoes, or colored socks
 - NEVER generate any other type of footwear (no sneakers, no running shoes, no casual shoes, no sandals)`;
 
 /**
