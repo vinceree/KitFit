@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { WidgetLoader } from "@/components/widget-loader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,11 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <script src="/widget/kitfit.js" defer></script>
-      </head>
       <body className="font-sans antialiased">
         {children}
+        <WidgetLoader />
       </body>
     </html>
   );
