@@ -8,21 +8,26 @@ export interface QualityCheckResult {
   violations: string[];
 }
 
-const CHECK_PROMPT = `You are a strict quality reviewer for AI-generated cycling photos. Check the image against EACH rule below. If ANY rule is violated, the image FAILS.
+const DEBUG_MODE = true;
 
-CHECKLIST — answer YES or NO for each:
+const CHECK_PROMPT = `You are a strict quality reviewer for AI-generated cycling photos.
+
+FIRST, describe what you see in the image in detail: the rider's clothing (jersey open or closed? what color?), helmet color, shoe color, sock color, facial expression, gaze direction, road surface, bike orientation relative to the road, how many people, and how prominent the rider is in the frame.
+
+THEN, check the image against EACH rule below. For each rule, write your reasoning and whether it PASSES or FAILS:
+
 1. SOLO RIDER: Is there exactly ONE person in the image? (no bystanders, no other cyclists)
 2. WHITE HELMET: Is the rider wearing a plain WHITE cycling helmet? (black helmet = FAIL, dark helmet = FAIL, colored helmet = FAIL)
 3. WHITE SHOES: Is the rider wearing plain WHITE cycling shoes? (black shoes = FAIL, colored shoes = FAIL)
 4. WHITE SOCKS: Is the rider wearing plain WHITE socks? (black socks = FAIL, colored socks = FAIL)
 5. ROAD SURFACE: Is the ground smooth asphalt? (gravel, dirt, cobblestones = FAIL)
-6. JERSEY CLOSED: Is the cycling jersey fully zipped/closed? (open or unzipped = FAIL)
+6. JERSEY CLOSED: Is the cycling jersey fully zipped/closed? (open or unzipped = FAIL — if you can see a base layer or skin underneath the jersey, it is OPEN)
 7. ROAD ALIGNMENT: Is the bike oriented along the road's direction? (bike pointing off-road or perpendicular to the road = FAIL)
 8. NO SMILE: Is the rider NOT smiling or grinning? (focused/neutral expression required)
 9. NOT STARING AT CAMERA: Is the rider looking ahead, NOT directly into the camera lens?
 10. RIDER PROMINENT: Is the rider large enough in the frame that the jersey design is clearly visible? (tiny distant rider = FAIL)
 
-Respond ONLY with a JSON object. Example:
+FINALLY, output a JSON object on its own line:
 {"passed": false, "violations": ["black shoes instead of white", "rider too small in frame"]}
 
 If all rules pass:
@@ -64,6 +69,14 @@ export async function checkImageQuality(
     if (!text) {
       console.log("Quality check: no response text, allowing image");
       return { passed: true, violations: [] };
+    }
+
+    if (DEBUG_MODE) {
+      console.log("\n════════════════════════════════════════════");
+      console.log("QUALITY CHECK — FULL ANALYSIS:");
+      console.log("════════════════════════════════════════════");
+      console.log(text);
+      console.log("════════════════════════════════════════════\n");
     }
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
