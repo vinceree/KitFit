@@ -116,13 +116,12 @@ interface KitFitConfig {
     .kf-upload-area {
       border: 2px dashed #e2e8f0;
       border-radius: 12px;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
-      cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
       margin-bottom: 16px;
     }
-    .kf-upload-area:hover, .kf-upload-area.dragover {
+    .kf-upload-area.dragover {
       border-color: #3b82f6;
       background: #f0f9ff;
     }
@@ -148,6 +147,28 @@ interface KitFitConfig {
       border-radius: 8px;
       margin-top: 8px;
     }
+    .kf-upload-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .kf-upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .kf-upload-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+    .kf-upload-btn svg { flex-shrink: 0; }
 
     .kf-scene-label {
       font-size: 14px;
@@ -384,8 +405,13 @@ interface KitFitConfig {
     }
 
     @media (max-width: 480px) {
-      .kf-modal { padding: 20px; margin: 8px; }
-      .kf-scene-grid { grid-template-columns: 1fr; }
+      .kf-modal { padding: 16px; margin: 8px; }
+      .kf-scene-grid { grid-template-columns: 1fr 1fr; }
+      .kf-upload-area { padding: 16px; }
+      .kf-upload-btn { padding: 10px 16px; font-size: 14px; }
+      .kf-trigger { width: 100%; justify-content: center; padding: 14px 24px; }
+      .kf-title { font-size: 18px; }
+      .kf-generate-btn { padding: 16px; font-size: 16px; }
     }
   `;
 
@@ -816,15 +842,37 @@ interface KitFitConfig {
           <div id="kf-form">
             <div class="kf-upload-area" id="kf-person-upload">
               <input type="file" accept="image/*" id="kf-person-input">
-              <div class="kf-upload-label"><strong>Upload your photo</strong></div>
-              <div class="kf-upload-hint">Full body, well-lit preferred</div>
+              <input type="file" accept="image/*" capture="user" id="kf-person-camera">
+              <div class="kf-upload-label"><strong>Your photo</strong></div>
+              <div class="kf-upload-hint">A clear, well-lit photo of yourself</div>
+              <div class="kf-upload-buttons" id="kf-person-buttons">
+                <button type="button" class="kf-upload-btn" id="kf-person-pick-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  Choose photo
+                </button>
+                <button type="button" class="kf-upload-btn" id="kf-person-camera-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Take selfie
+                </button>
+              </div>
             </div>
             <div class="kf-saved-photos" id="kf-person-saved" style="display:none"></div>
 
             <div class="kf-upload-area" id="kf-bike-upload">
               <input type="file" accept="image/*" id="kf-bike-input">
-              <div class="kf-upload-label"><strong>Upload your bike</strong> (optional)</div>
-              <div class="kf-upload-hint">Side view works best</div>
+              <input type="file" accept="image/*" capture="environment" id="kf-bike-camera">
+              <div class="kf-upload-label"><strong>Your bike</strong> (optional)</div>
+              <div class="kf-upload-hint">Side view, good lighting. A photo from online may give sharper results.</div>
+              <div class="kf-upload-buttons" id="kf-bike-buttons">
+                <button type="button" class="kf-upload-btn" id="kf-bike-pick-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  Choose photo
+                </button>
+                <button type="button" class="kf-upload-btn" id="kf-bike-camera-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Take photo
+                </button>
+              </div>
             </div>
             <div class="kf-saved-photos" id="kf-bike-saved" style="display:none"></div>
 
@@ -884,7 +932,15 @@ interface KitFitConfig {
       // Person upload
       const personArea = $("#kf-person-upload");
       const personInput = $input("#kf-person-input");
-      personArea.addEventListener("click", () => personInput.click());
+      const personCamera = $input("#kf-person-camera");
+      $("#kf-person-pick-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        personInput.click();
+      });
+      $("#kf-person-camera-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        personCamera.click();
+      });
       personArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         personArea.classList.add("dragover");
@@ -901,11 +957,22 @@ interface KitFitConfig {
       personInput.addEventListener("change", () => {
         if (personInput.files?.[0]) this.setPersonFile(personInput.files[0]);
       });
+      personCamera.addEventListener("change", () => {
+        if (personCamera.files?.[0]) this.setPersonFile(personCamera.files[0]);
+      });
 
       // Bike upload
       const bikeArea = $("#kf-bike-upload");
       const bikeInput = $input("#kf-bike-input");
-      bikeArea.addEventListener("click", () => bikeInput.click());
+      const bikeCamera = $input("#kf-bike-camera");
+      $("#kf-bike-pick-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        bikeInput.click();
+      });
+      $("#kf-bike-camera-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        bikeCamera.click();
+      });
       bikeArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         bikeArea.classList.add("dragover");
@@ -921,6 +988,9 @@ interface KitFitConfig {
       });
       bikeInput.addEventListener("change", () => {
         if (bikeInput.files?.[0]) this.setBikeFile(bikeInput.files[0]);
+      });
+      bikeCamera.addEventListener("change", () => {
+        if (bikeCamera.files?.[0]) this.setBikeFile(bikeCamera.files[0]);
       });
 
       // Scene selection
@@ -953,6 +1023,10 @@ interface KitFitConfig {
       area.classList.add("has-file");
       area.querySelector(".kf-upload-label")!.innerHTML =
         `<strong>${file.name}</strong>`;
+      const buttons = area.querySelector("#kf-person-buttons") as HTMLElement;
+      if (buttons) buttons.style.display = "none";
+      const hint = area.querySelector(".kf-upload-hint") as HTMLElement;
+      if (hint) hint.style.display = "none";
 
       let preview = area.querySelector(
         ".kf-upload-preview"
@@ -984,6 +1058,10 @@ interface KitFitConfig {
       area.classList.add("has-file");
       area.querySelector(".kf-upload-label")!.innerHTML =
         `<strong>${file.name}</strong>`;
+      const buttons = area.querySelector("#kf-bike-buttons") as HTMLElement;
+      if (buttons) buttons.style.display = "none";
+      const hint = area.querySelector(".kf-upload-hint") as HTMLElement;
+      if (hint) hint.style.display = "none";
 
       let preview = area.querySelector(
         ".kf-upload-preview"
@@ -1246,18 +1324,26 @@ interface KitFitConfig {
       ) as HTMLElement;
       personArea.classList.remove("has-file");
       personArea.querySelector(".kf-upload-label")!.innerHTML =
-        '<strong>Upload your photo</strong>';
+        '<strong>Your photo</strong>';
       const personPreview = personArea.querySelector(".kf-upload-preview");
       if (personPreview) personPreview.remove();
+      const personButtons = personArea.querySelector("#kf-person-buttons") as HTMLElement;
+      if (personButtons) personButtons.style.display = "flex";
+      const personHint = personArea.querySelector(".kf-upload-hint") as HTMLElement;
+      if (personHint) personHint.style.display = "block";
 
       const bikeArea = this.root.querySelector(
         "#kf-bike-upload"
       ) as HTMLElement;
       bikeArea.classList.remove("has-file");
       bikeArea.querySelector(".kf-upload-label")!.innerHTML =
-        '<strong>Upload your bike</strong> (optional)';
+        '<strong>Your bike</strong> (optional)';
       const bikePreview = bikeArea.querySelector(".kf-upload-preview");
       if (bikePreview) bikePreview.remove();
+      const bikeButtons = bikeArea.querySelector("#kf-bike-buttons") as HTMLElement;
+      if (bikeButtons) bikeButtons.style.display = "flex";
+      const bikeHint = bikeArea.querySelector(".kf-upload-hint") as HTMLElement;
+      if (bikeHint) bikeHint.style.display = "block";
 
       this.root
         .querySelectorAll(".kf-saved-thumb")
