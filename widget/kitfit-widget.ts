@@ -716,6 +716,7 @@ interface KitFitConfig {
     private activeJobId: string | null = null;
     private lastResultImage: string | null = null;
     private modalOpen = false;
+    private isMobile = false;
 
     constructor(el: HTMLElement, config: KitFitConfig) {
       this.config = { ...DEFAULTS, ...config };
@@ -807,6 +808,8 @@ interface KitFitConfig {
       style.textContent = STYLES;
       this.root.appendChild(style);
 
+      this.isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
       const trigger = document.createElement("button");
       trigger.className = "kf-trigger";
       trigger.innerHTML = `
@@ -833,6 +836,27 @@ interface KitFitConfig {
     }
 
     private modalHTML(): string {
+      const cameraIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+      const galleryIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
+
+      const personButtons = this.isMobile
+        ? `<div class="kf-upload-buttons" id="kf-person-buttons">
+            <button type="button" class="kf-upload-btn" id="kf-person-pick-btn">${galleryIcon} Choose photo</button>
+            <button type="button" class="kf-upload-btn" id="kf-person-camera-btn">${cameraIcon} Take selfie</button>
+          </div>`
+        : `<div class="kf-upload-buttons" id="kf-person-buttons">
+            <button type="button" class="kf-upload-btn" id="kf-person-pick-btn">${galleryIcon} Choose photo</button>
+          </div>`;
+
+      const bikeButtons = this.isMobile
+        ? `<div class="kf-upload-buttons" id="kf-bike-buttons">
+            <button type="button" class="kf-upload-btn" id="kf-bike-pick-btn">${galleryIcon} Choose photo</button>
+            <button type="button" class="kf-upload-btn" id="kf-bike-camera-btn">${cameraIcon} Take photo</button>
+          </div>`
+        : `<div class="kf-upload-buttons" id="kf-bike-buttons">
+            <button type="button" class="kf-upload-btn" id="kf-bike-pick-btn">${galleryIcon} Choose photo</button>
+          </div>`;
+
       return `
         <div class="kf-modal">
           <button class="kf-close">&times;</button>
@@ -845,16 +869,7 @@ interface KitFitConfig {
               <input type="file" accept="image/*" capture="user" id="kf-person-camera">
               <div class="kf-upload-label"><strong>Your photo</strong></div>
               <div class="kf-upload-hint">A clear, well-lit photo of yourself</div>
-              <div class="kf-upload-buttons" id="kf-person-buttons">
-                <button type="button" class="kf-upload-btn" id="kf-person-pick-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                  Choose photo
-                </button>
-                <button type="button" class="kf-upload-btn" id="kf-person-camera-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                  Take selfie
-                </button>
-              </div>
+              ${personButtons}
             </div>
             <div class="kf-saved-photos" id="kf-person-saved" style="display:none"></div>
 
@@ -863,16 +878,7 @@ interface KitFitConfig {
               <input type="file" accept="image/*" capture="environment" id="kf-bike-camera">
               <div class="kf-upload-label"><strong>Your bike</strong> (optional)</div>
               <div class="kf-upload-hint">Side view, good lighting. A photo from online may give sharper results.</div>
-              <div class="kf-upload-buttons" id="kf-bike-buttons">
-                <button type="button" class="kf-upload-btn" id="kf-bike-pick-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                  Choose photo
-                </button>
-                <button type="button" class="kf-upload-btn" id="kf-bike-camera-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                  Take photo
-                </button>
-              </div>
+              ${bikeButtons}
             </div>
             <div class="kf-saved-photos" id="kf-bike-saved" style="display:none"></div>
 
@@ -932,15 +938,21 @@ interface KitFitConfig {
       // Person upload
       const personArea = $("#kf-person-upload");
       const personInput = $input("#kf-person-input");
-      const personCamera = $input("#kf-person-camera");
+      const personCamera = this.root.querySelector("#kf-person-camera") as HTMLInputElement | null;
       $("#kf-person-pick-btn").addEventListener("click", (e) => {
         e.stopPropagation();
         personInput.click();
       });
-      $("#kf-person-camera-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        personCamera.click();
-      });
+      const personCameraBtn = this.root.querySelector("#kf-person-camera-btn");
+      if (personCameraBtn && personCamera) {
+        personCameraBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          personCamera.click();
+        });
+        personCamera.addEventListener("change", () => {
+          if (personCamera.files?.[0]) this.setPersonFile(personCamera.files[0]);
+        });
+      }
       personArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         personArea.classList.add("dragover");
@@ -957,22 +969,25 @@ interface KitFitConfig {
       personInput.addEventListener("change", () => {
         if (personInput.files?.[0]) this.setPersonFile(personInput.files[0]);
       });
-      personCamera.addEventListener("change", () => {
-        if (personCamera.files?.[0]) this.setPersonFile(personCamera.files[0]);
-      });
 
       // Bike upload
       const bikeArea = $("#kf-bike-upload");
       const bikeInput = $input("#kf-bike-input");
-      const bikeCamera = $input("#kf-bike-camera");
+      const bikeCamera = this.root.querySelector("#kf-bike-camera") as HTMLInputElement | null;
       $("#kf-bike-pick-btn").addEventListener("click", (e) => {
         e.stopPropagation();
         bikeInput.click();
       });
-      $("#kf-bike-camera-btn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        bikeCamera.click();
-      });
+      const bikeCameraBtn = this.root.querySelector("#kf-bike-camera-btn");
+      if (bikeCameraBtn && bikeCamera) {
+        bikeCameraBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          bikeCamera.click();
+        });
+        bikeCamera.addEventListener("change", () => {
+          if (bikeCamera.files?.[0]) this.setBikeFile(bikeCamera.files[0]);
+        });
+      }
       bikeArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         bikeArea.classList.add("dragover");
@@ -988,9 +1003,6 @@ interface KitFitConfig {
       });
       bikeInput.addEventListener("change", () => {
         if (bikeInput.files?.[0]) this.setBikeFile(bikeInput.files[0]);
-      });
-      bikeCamera.addEventListener("change", () => {
-        if (bikeCamera.files?.[0]) this.setBikeFile(bikeCamera.files[0]);
       });
 
       // Scene selection
