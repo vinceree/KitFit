@@ -46,6 +46,14 @@ export interface ProductPairing {
   created_at: string;
 }
 
+export interface ProductReferenceImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  position: number;
+  created_at: string;
+}
+
 export type TryOnStatus = "processing" | "completed" | "failed";
 
 export interface TryOn {

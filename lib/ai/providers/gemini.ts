@@ -4,15 +4,10 @@ import type { ScenePreset } from "@/lib/supabase/types";
 
 const MODEL = "gemini-3.1-flash-image";
 
-/**
- * Gemini-based virtual try-on generation.
- * Sends person, bike, and garment images to Gemini's image generation model
- * along with the scene-specific prompt.
- */
 export async function generateWithGemini(
   personImageBase64: string,
   bikeImageBase64: string | null,
-  garmentImageBase64: string,
+  garmentImagesBase64: string[],
   scenePreset: ScenePreset,
   complementImageBase64: string | null = null
 ): Promise<string> {
@@ -24,9 +19,6 @@ export async function generateWithGemini(
   const ai = new GoogleGenAI({ apiKey });
   const { prompt, negativePrompt } = buildPrompt(scenePreset);
 
-  // Two prompt structures to compare:
-  // - "interleaved" (default): label, image, label, image — each label next to its image
-  // - "block": NanoBanana-style — one combined text block first, then all images in order
   const structure = process.env.GEMINI_PROMPT_STRUCTURE || "interleaved";
 
   const parts: Array<
@@ -38,7 +30,7 @@ export async function generateWithGemini(
           prompt,
           negativePrompt,
           personImageBase64,
-          garmentImageBase64,
+          garmentImagesBase64,
           bikeImageBase64,
           complementImageBase64
         )
@@ -46,7 +38,7 @@ export async function generateWithGemini(
           prompt,
           negativePrompt,
           personImageBase64,
-          garmentImageBase64,
+          garmentImagesBase64,
           bikeImageBase64,
           complementImageBase64
         );
@@ -63,7 +55,6 @@ export async function generateWithGemini(
     },
   });
 
-  // Extract the generated image from the response
   const candidates = response.candidates;
   if (!candidates || candidates.length === 0) {
     throw new Error("Gemini returned no candidates");
@@ -76,7 +67,6 @@ export async function generateWithGemini(
 
   for (const part of content.parts) {
     if (part.inlineData && part.inlineData.data) {
-      // Return the base64 image data
       return part.inlineData.data;
     }
   }
@@ -94,14 +84,11 @@ function img(data: string): Part {
   return { inlineData: { mimeType: "image/jpeg", data } };
 }
 
-/**
- * Default structure: text label immediately before each image.
- */
 function buildInterleavedParts(
   prompt: string,
   negativePrompt: string,
   person: string,
-  garment: string,
+  garments: string[],
   bike: string | null,
   complement: string | null
 ): Part[] {
@@ -113,11 +100,26 @@ function buildInterleavedParts(
       text: "IMAGE 1 — THE PERSON (use THIS face, body, skin tone, and hair in the output. This is the ONLY face that should appear):",
     },
     img(person),
-    {
-      text: "IMAGE 2 — THE GARMENT ONLY (extract ONLY the clothing design, colors, patterns, and logos from this image. COMPLETELY IGNORE the person/model wearing it — do NOT use their face, body, or pose):",
-    },
-    img(garment),
   ];
+
+  if (garments.length === 1) {
+    parts.push(
+      {
+        text: "IMAGE 2 — THE GARMENT ONLY (extract ONLY the clothing design, colors, patterns, and logos from this image. COMPLETELY IGNORE the person/model wearing it — do NOT use their face, body, or pose):",
+      },
+      img(garments[0])
+    );
+  } else {
+    parts.push({
+      text: `THE GARMENT — ${garments.length} reference views provided. Use ALL of them together to accurately reproduce the garment's design, colors, patterns, and logos from every angle. COMPLETELY IGNORE any person/model wearing the garment — do NOT use their face, body, or pose:`,
+    });
+    garments.forEach((g, i) => {
+      parts.push(
+        { text: `Garment view ${i + 1} of ${garments.length}:` },
+        img(g)
+      );
+    });
+  }
 
   if (complement) {
     parts.push(
@@ -137,34 +139,43 @@ function buildInterleavedParts(
   return parts;
 }
 
-/**
- * NanoBanana-style structure: one combined text block describing all images,
- * then all images appended in order.
- */
 function buildBlockParts(
   prompt: string,
   negativePrompt: string,
   person: string,
-  garment: string,
+  garments: string[],
   bike: string | null,
   complement: string | null
 ): Part[] {
   const imageDesc: string[] = [
     "\nThe first reference image is the person.",
-    "The second is the primary cycling garment to wear.",
   ];
+
+  if (garments.length === 1) {
+    imageDesc.push("The second is the primary cycling garment to wear.");
+  } else {
+    for (let i = 0; i < garments.length; i++) {
+      imageDesc.push(
+        i === 0
+          ? "The second is the primary cycling garment (front view)."
+          : `Image ${i + 2} is another view of the same garment — use all views to reproduce it accurately.`
+      );
+    }
+  }
+
+  const nextIdx = 1 + garments.length + 1;
   if (complement && bike) {
     imageDesc.push(
-      "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
-      "The fourth is the person's bike."
+      `Image ${nextIdx} is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.`,
+      `Image ${nextIdx + 1} is the person's bike.`
     );
   } else if (complement) {
     imageDesc.push(
-      "The third is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.",
+      `Image ${nextIdx} is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.`,
       "No bike photo provided — place the person on a generic high-end road bike."
     );
   } else if (bike) {
-    imageDesc.push("The third image is the person's bike.");
+    imageDesc.push(`Image ${nextIdx} is the person's bike.`);
   } else {
     imageDesc.push(
       "No bike photo provided — place the person on a generic high-end road bike."
@@ -177,7 +188,8 @@ function buildBlockParts(
     ...imageDesc,
   ].join("");
 
-  const parts: Part[] = [{ text: fullPrompt }, img(person), img(garment)];
+  const parts: Part[] = [{ text: fullPrompt }, img(person)];
+  garments.forEach((g) => parts.push(img(g)));
   if (complement) parts.push(img(complement));
   if (bike) parts.push(img(bike));
 

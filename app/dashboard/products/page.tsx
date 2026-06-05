@@ -24,12 +24,20 @@ export default async function ProductsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Product Catalog</h1>
-        <Link
-          href="/dashboard/products/pairings"
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
-        >
-          Manage Pairings &rarr;
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            href="/dashboard/products/reference-images"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Reference Images &rarr;
+          </Link>
+          <Link
+            href="/dashboard/products/pairings"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Manage Pairings &rarr;
+          </Link>
+        </div>
       </div>
 
       <Card className="mb-6">

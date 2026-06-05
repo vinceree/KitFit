@@ -1014,9 +1014,35 @@ interface KitFitConfig {
       btn.disabled = !this.personFile;
     }
 
-    private async fetchGarmentImage(): Promise<File | null> {
-      if (!this.config.garmentImageUrl) return null;
-      return this.fetchImageFromUrl(this.config.garmentImageUrl, "garment.jpg");
+    private async fetchGarmentImages(): Promise<File[]> {
+      if (this.config.productId && this.config.apiUrl) {
+        try {
+          const resp = await fetch(
+            `${this.config.apiUrl}/api/products/${this.config.productId}/reference-images`
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            const refs = data.referenceImages as { image_url: string }[];
+            if (refs && refs.length > 0) {
+              const files = await Promise.all(
+                refs.map((r, i) =>
+                  this.fetchImageFromUrl(r.image_url, `garment-${i}.jpg`)
+                )
+              );
+              const valid = files.filter(Boolean) as File[];
+              if (valid.length > 0) return valid;
+            }
+          }
+        } catch {
+          /* fall through to default */
+        }
+      }
+      if (!this.config.garmentImageUrl) return [];
+      const file = await this.fetchImageFromUrl(
+        this.config.garmentImageUrl,
+        "garment.jpg"
+      );
+      return file ? [file] : [];
     }
 
     private async generate() {
@@ -1038,8 +1064,8 @@ interface KitFitConfig {
       }, 500);
 
       try {
-        const garmentFile = await this.fetchGarmentImage();
-        if (!garmentFile) {
+        const garmentFiles = await this.fetchGarmentImages();
+        if (garmentFiles.length === 0) {
           throw new Error(
             "Could not load the product image. Please try again."
           );
@@ -1061,7 +1087,7 @@ interface KitFitConfig {
         formData.append("api_key", this.config.apiKey);
         formData.append("scene_preset", this.selectedScene);
         formData.append("person_image", this.personFile);
-        formData.append("garment_image", garmentFile);
+        garmentFiles.forEach((f) => formData.append("garment_image", f));
         formData.append("job_id", jobId);
         if (complementFile) {
           formData.append("complement_image", complementFile);

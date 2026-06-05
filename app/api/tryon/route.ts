@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const productId = formData.get("product_id") as string | null;
     const personImage = formData.get("person_image") as File | null;
     const bikeImage = formData.get("bike_image") as File | null;
-    const garmentImage = formData.get("garment_image") as File | null;
+    const garmentImages = formData.getAll("garment_image") as File[];
     const complementImage = formData.get("complement_image") as File | null;
     jobId = formData.get("job_id") as string | null;
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (!personImage) {
       return json({ error: "person_image is required" }, 400);
     }
-    if (!garmentImage) {
+    if (garmentImages.length === 0) {
       return json({ error: "garment_image is required" }, 400);
     }
     if (!scenePreset || !VALID_PRESETS.has(scenePreset as ScenePreset)) {
@@ -131,9 +131,11 @@ export async function POST(request: NextRequest) {
       await personImage.arrayBuffer()
     ).toString("base64");
 
-    const garmentBase64 = Buffer.from(
-      await garmentImage.arrayBuffer()
-    ).toString("base64");
+    const garmentBase64Array = await Promise.all(
+      garmentImages.map(async (f) =>
+        Buffer.from(await f.arrayBuffer()).toString("base64")
+      )
+    );
 
     const bikeBase64 = bikeImage
       ? Buffer.from(await bikeImage.arrayBuffer()).toString("base64")
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
     let resultBase64 = await generateTryOn(
       personBase64,
       bikeBase64,
-      garmentBase64,
+      garmentBase64Array,
       scenePreset as ScenePreset,
       complementBase64
     );
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
       resultBase64 = await generateTryOn(
         personBase64,
         bikeBase64,
-        garmentBase64,
+        garmentBase64Array,
         scenePreset as ScenePreset,
         complementBase64
       );

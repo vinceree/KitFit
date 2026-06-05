@@ -6,23 +6,16 @@ import { generateWithWaveSpeed } from "./providers/wavespeed";
 
 export type AIProvider = "gemini" | "nanobanana" | "wavespeed" | "replicate_flux" | "fashn_replicate";
 
-/**
- * Main entry point for virtual try-on image generation.
- *
- * @param personImageBase64 - Base64-encoded photo of the person
- * @param bikeImageBase64 - Base64-encoded photo of the bike (null if not provided)
- * @param garmentImageBase64 - Base64-encoded product/jersey image
- * @param scenePreset - Scene environment preset
- * @param complementImageBase64 - Base64-encoded complementary garment (null if not provided)
- * @returns Base64-encoded result image
- */
 export async function generateTryOn(
   personImageBase64: string,
   bikeImageBase64: string | null,
-  garmentImageBase64: string,
+  garmentImagesBase64: string[] | string,
   scenePreset: ScenePreset,
   complementImageBase64: string | null = null
 ): Promise<string> {
+  const garmentArray = Array.isArray(garmentImagesBase64)
+    ? garmentImagesBase64
+    : [garmentImagesBase64];
   const provider = (process.env.AI_PROVIDER || "gemini") as AIProvider;
 
   switch (provider) {
@@ -30,7 +23,7 @@ export async function generateTryOn(
       return generateWithGemini(
         personImageBase64,
         bikeImageBase64,
-        garmentImageBase64,
+        garmentArray,
         scenePreset,
         complementImageBase64
       );
@@ -39,7 +32,7 @@ export async function generateTryOn(
       return generateWithNanoBanana(
         personImageBase64,
         bikeImageBase64,
-        garmentImageBase64,
+        garmentArray[0],
         scenePreset,
         complementImageBase64
       );
@@ -48,7 +41,7 @@ export async function generateTryOn(
       return generateWithWaveSpeed(
         personImageBase64,
         bikeImageBase64,
-        garmentImageBase64,
+        garmentArray[0],
         scenePreset,
         complementImageBase64
       );
@@ -57,7 +50,7 @@ export async function generateTryOn(
       return generateWithReplicateFlux(
         personImageBase64,
         bikeImageBase64,
-        garmentImageBase64,
+        garmentArray[0],
         scenePreset,
         complementImageBase64
       );
