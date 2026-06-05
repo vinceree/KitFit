@@ -1146,13 +1146,6 @@ interface KitFitConfig {
       $("#kf-error").style.display = "none";
       $("#kf-dismiss-hint").style.display = "none";
 
-      setTimeout(() => {
-        const hint = this.root.querySelector("#kf-dismiss-hint") as HTMLElement;
-        if (hint && this.activeJobId) {
-          hint.style.display = "block";
-        }
-      }, 500);
-
       try {
         const garmentFiles = await this.fetchGarmentImages();
         if (garmentFiles.length === 0) {
@@ -1172,6 +1165,13 @@ interface KitFitConfig {
         // Generate a job ID for async tracking
         const jobId = crypto.randomUUID();
         this.activeJobId = jobId;
+
+        setTimeout(() => {
+          const hint = this.root.querySelector("#kf-dismiss-hint") as HTMLElement;
+          if (hint && this.activeJobId === jobId) {
+            hint.style.display = "block";
+          }
+        }, 500);
 
         const formData = new FormData();
         formData.append("api_key", this.config.apiKey);
