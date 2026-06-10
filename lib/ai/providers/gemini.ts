@@ -49,7 +49,7 @@ export async function generateWithGemini(
     config: {
       responseModalities: ["image", "text"],
       imageConfig: {
-        aspectRatio: "3:4",
+        aspectRatio: "4:5",
         imageSize: "1K",
       },
     },
