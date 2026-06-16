@@ -66,17 +66,8 @@ export async function POST(request: NextRequest) {
       .eq("key", apiKey)
       .single();
 
-    if (keyError) {
-      return json({ error: `DIAG keyError: ${keyError.message}` }, 401);
-    }
-    if (!keyData) {
-      return json(
-        { error: "DIAG: key not found (RLS blocking, or wrong Supabase project/URL)" },
-        401
-      );
-    }
-    if (!keyData.is_active) {
-      return json({ error: "DIAG: key found but is_active=false" }, 401);
+    if (keyError || !keyData || !keyData.is_active) {
+      return json({ error: "Invalid or inactive API key" }, 401);
     }
 
     const brandId = keyData.brand_id;
