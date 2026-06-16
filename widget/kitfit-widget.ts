@@ -1135,6 +1135,41 @@ interface KitFitConfig {
       return file ? [file] : [];
     }
 
+    // Like fetchGarmentImages, but for the selected complement product: prefer
+    // the curated reference images (chosen in the dashboard), falling back to
+    // the complement's single catalog image.
+    private async fetchComplementImages(
+      complement: Complement
+    ): Promise<File[]> {
+      if (this.config.apiUrl && complement.id) {
+        try {
+          const resp = await fetch(
+            `${this.config.apiUrl}/api/products/${complement.id}/reference-images`
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            const refs = data.referenceImages as { image_url: string }[];
+            if (refs && refs.length > 0) {
+              const files = await Promise.all(
+                refs.map((r, i) =>
+                  this.fetchImageFromUrl(r.image_url, `complement-${i}.jpg`)
+                )
+              );
+              const valid = files.filter(Boolean) as File[];
+              if (valid.length > 0) return valid;
+            }
+          }
+        } catch {
+          /* fall through to default */
+        }
+      }
+      const file = await this.fetchImageFromUrl(
+        complement.imageUrl,
+        "complement.jpg"
+      );
+      return file ? [file] : [];
+    }
+
     private async generate() {
       const $ = (sel: string) => this.root.querySelector(sel) as HTMLElement;
 
@@ -1154,11 +1189,10 @@ interface KitFitConfig {
           );
         }
 
-        let complementFile: File | null = null;
+        let complementFiles: File[] = [];
         if (this.selectedComplement) {
-          complementFile = await this.fetchImageFromUrl(
-            this.selectedComplement.imageUrl,
-            "complement.jpg"
+          complementFiles = await this.fetchComplementImages(
+            this.selectedComplement
           );
         }
 
@@ -1179,9 +1213,9 @@ interface KitFitConfig {
         formData.append("person_image", this.personFile);
         garmentFiles.forEach((f) => formData.append("garment_image", f));
         formData.append("job_id", jobId);
-        if (complementFile) {
-          formData.append("complement_image", complementFile);
-        }
+        complementFiles.forEach((f) =>
+          formData.append("complement_image", f)
+        );
         if (this.config.productId) {
           formData.append("product_id", this.config.productId);
         }

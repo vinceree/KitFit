@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const personImage = formData.get("person_image") as File | null;
     const bikeImage = formData.get("bike_image") as File | null;
     const garmentImages = formData.getAll("garment_image") as File[];
-    const complementImage = formData.get("complement_image") as File | null;
+    const complementImages = formData.getAll("complement_image") as File[];
     jobId = formData.get("job_id") as string | null;
 
     if (!apiKey) {
@@ -141,16 +141,18 @@ export async function POST(request: NextRequest) {
       ? Buffer.from(await bikeImage.arrayBuffer()).toString("base64")
       : null;
 
-    const complementBase64 = complementImage
-      ? Buffer.from(await complementImage.arrayBuffer()).toString("base64")
-      : null;
+    const complementBase64Array = await Promise.all(
+      complementImages.map(async (f) =>
+        Buffer.from(await f.arrayBuffer()).toString("base64")
+      )
+    );
 
     let resultBase64 = await generateTryOn(
       personBase64,
       bikeBase64,
       garmentBase64Array,
       scenePreset as ScenePreset,
-      complementBase64
+      complementBase64Array
     );
 
     const qualityResult = await checkImageQuality(resultBase64, scenePreset as ScenePreset);
@@ -161,7 +163,7 @@ export async function POST(request: NextRequest) {
         bikeBase64,
         garmentBase64Array,
         scenePreset as ScenePreset,
-        complementBase64
+        complementBase64Array
       );
     }
 

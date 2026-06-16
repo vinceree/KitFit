@@ -11,7 +11,7 @@ export async function generateTryOn(
   bikeImageBase64: string | null,
   garmentImagesBase64: string[] | string,
   scenePreset: ScenePreset,
-  complementImageBase64: string | null = null
+  complementImagesBase64: string[] = []
 ): Promise<string> {
   const garmentArray = Array.isArray(garmentImagesBase64)
     ? garmentImagesBase64
@@ -25,7 +25,7 @@ export async function generateTryOn(
         bikeImageBase64,
         garmentArray,
         scenePreset,
-        complementImageBase64
+        complementImagesBase64
       );
 
     case "nanobanana":
@@ -34,7 +34,7 @@ export async function generateTryOn(
         bikeImageBase64,
         garmentArray[0],
         scenePreset,
-        complementImageBase64
+        complementImagesBase64[0] ?? null
       );
 
     case "wavespeed":
@@ -43,7 +43,7 @@ export async function generateTryOn(
         bikeImageBase64,
         garmentArray[0],
         scenePreset,
-        complementImageBase64
+        complementImagesBase64[0] ?? null
       );
 
     case "replicate_flux":
@@ -52,7 +52,7 @@ export async function generateTryOn(
         bikeImageBase64,
         garmentArray[0],
         scenePreset,
-        complementImageBase64
+        complementImagesBase64[0] ?? null
       );
 
     case "fashn_replicate":

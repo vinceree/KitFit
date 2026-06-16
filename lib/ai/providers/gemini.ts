@@ -9,7 +9,7 @@ export async function generateWithGemini(
   bikeImageBase64: string | null,
   garmentImagesBase64: string[],
   scenePreset: ScenePreset,
-  complementImageBase64: string | null = null
+  complementImagesBase64: string[] = []
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -32,7 +32,7 @@ export async function generateWithGemini(
           personImageBase64,
           garmentImagesBase64,
           bikeImageBase64,
-          complementImageBase64
+          complementImagesBase64
         )
       : buildInterleavedParts(
           prompt,
@@ -40,7 +40,7 @@ export async function generateWithGemini(
           personImageBase64,
           garmentImagesBase64,
           bikeImageBase64,
-          complementImageBase64
+          complementImagesBase64
         );
 
   const response = await ai.models.generateContent({
@@ -90,7 +90,7 @@ function buildInterleavedParts(
   person: string,
   garments: string[],
   bike: string | null,
-  complement: string | null
+  complements: string[]
 ): Part[] {
   const fullPrompt = `${prompt}\n\nAvoid the following: ${negativePrompt}`;
 
@@ -121,10 +121,17 @@ function buildInterleavedParts(
     });
   }
 
-  if (complement) {
+  if (complements.length === 1) {
     parts.push(
       { text: "Complementary garment — dress the person in BOTH garments together:" },
-      img(complement)
+      img(complements[0])
+    );
+  } else if (complements.length > 1) {
+    parts.push({
+      text: `Complementary garment — ${complements.length} reference views provided. Dress the person in BOTH the main garment AND this complementary garment together. Use ALL these views to reproduce the complementary garment accurately, and COMPLETELY IGNORE any person/model wearing it:`,
+    });
+    complements.forEach((c, i) =>
+      parts.push({ text: `Complementary garment view ${i + 1}:` }, img(c))
     );
   }
 
@@ -145,7 +152,7 @@ function buildBlockParts(
   person: string,
   garments: string[],
   bike: string | null,
-  complement: string | null
+  complements: string[]
 ): Part[] {
   const imageDesc: string[] = [
     "\nThe first reference image is the person.",
@@ -163,24 +170,21 @@ function buildBlockParts(
     }
   }
 
-  const nextIdx = 1 + garments.length + 1;
-  if (complement && bike) {
+  if (complements.length === 1) {
     imageDesc.push(
-      `Image ${nextIdx} is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.`,
-      `Image ${nextIdx + 1} is the person's bike.`
+      "The next image is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together."
     );
-  } else if (complement) {
+  } else if (complements.length > 1) {
     imageDesc.push(
-      `Image ${nextIdx} is a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together.`,
-      "No bike photo provided — place the person on a generic high-end road bike."
-    );
-  } else if (bike) {
-    imageDesc.push(`Image ${nextIdx} is the person's bike.`);
-  } else {
-    imageDesc.push(
-      "No bike photo provided — place the person on a generic high-end road bike."
+      `The next ${complements.length} images are views of a complementary garment (e.g. matching jersey or bib shorts) — dress the person in BOTH garments together, using all those views to reproduce it accurately.`
     );
   }
+
+  imageDesc.push(
+    bike
+      ? "The final image is the person's bike."
+      : "No bike photo provided — place the person on a generic high-end road bike."
+  );
 
   const fullPrompt = [
     prompt,
@@ -190,7 +194,7 @@ function buildBlockParts(
 
   const parts: Part[] = [{ text: fullPrompt }, img(person)];
   garments.forEach((g) => parts.push(img(g)));
-  if (complement) parts.push(img(complement));
+  complements.forEach((c) => parts.push(img(c)));
   if (bike) parts.push(img(bike));
 
   return parts;
