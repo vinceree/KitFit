@@ -26,12 +26,47 @@ async function getAuthUser() {
   return data.user;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The dashboard calls these endpoints with the product UUID, but the embedded
+// widget calls the GET endpoint with the product SLUG (data-kitfit-product).
+// Resolve a slug to its UUID so curated reference images are found in both
+// cases. (Mirrors the resolver used by the complements endpoint.)
+async function resolveProductId(
+  supabase: ReturnType<typeof createServiceClient>,
+  idOrSlug: string
+): Promise<string | null> {
+  if (UUID_RE.test(idOrSlug)) return idOrSlug;
+
+  const { data } = await supabase
+    .from("products")
+    .select("id")
+    .ilike("product_url", `%/products/${idOrSlug}%`)
+    .limit(1)
+    .single();
+  if (data) return data.id;
+
+  const { data: byName } = await supabase
+    .from("products")
+    .select("id")
+    .ilike("name", `%${idOrSlug.replace(/-/g, " ")}%`)
+    .limit(1)
+    .single();
+
+  return byName?.id || null;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const productId = params.id;
   const supabase = createServiceClient();
+
+  const productId = await resolveProductId(supabase, params.id);
+  if (!productId) {
+    return json({ referenceImages: [] });
+  }
 
   const { data, error } = await supabase
     .from("product_reference_images")
